@@ -1,4 +1,8 @@
-# Hexo Configuration
+# 把 theme: next 改成 theme: stellar
+
+# 4. 创建 Stellar 的配置文件
+nano _config.stellar.yml
+# 先写入最少内容：# Hexo Configuration
 ## Docs: https://hexo.io/docs/configuration.html
 ## Source: https://github.com/hexojs/hexo/
 
@@ -96,7 +100,7 @@ ignore:
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: next
+theme: stellar
 
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment
