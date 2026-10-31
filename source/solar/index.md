@@ -11,6 +11,8 @@ rightbar: false
 <div id="solar-app">
   <div class="solar-stage">
     <canvas id="solar-canvas" aria-label="太阳系二维俯视图"></canvas>
+    <canvas id="solar-canvas3d" aria-label="太阳系三维视图"></canvas>
+    <div id="solar-labels" aria-hidden="true"></div>
     <div class="solar-badge">
       <b id="solar-year">2026.0</b>
       <span>年 · 二维俯视</span>
@@ -29,6 +31,7 @@ rightbar: false
       <option value="3">3×</option>
     </select>
     <button id="solar-reset" type="button">回到全图</button>
+    <button id="solar-mode" type="button">3D 视角</button>
     <label class="solar-toggle"><input type="checkbox" id="solar-missions" checked> 探测器</label>
   </div>
 

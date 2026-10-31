@@ -36,6 +36,9 @@
     { id: 'pluto',   zh: '冥王星', en: 'Pluto',  a: 39.482,  e: 0.2488,  P: 247.94,   peri: 224.07,  L0: 238.93,  color: '#c9b8a3', size: 2.4, diameter: '2,377 km', day: '6.4 天', fact: '2006 年被重新归类为矮行星；轨道倾角 17°，明显斜出其他行星的平面。' }
   ];
 
+  var INC = { mercury: 7.0, venus: 3.39, earth: 0, mars: 1.85, jupiter: 1.30, saturn: 2.49, uranus: 0.77, neptune: 1.77, pluto: 17.2 };
+  PLANETS.forEach(function (p) { p.inc = INC[p.id] || 0; });
+
   // 标志性任务/探测器（简化轨迹：深空按平均日心距，行星任务附着在行星旁）
   var MISSIONS = [
     { id: 'sputnik', zh: '斯普特尼克 1 号', en: 'Sputnik 1', year: 1957, color: '#ffd479', kind: 'planet', planet: 'earth', note: '人类第一颗人造卫星，开启太空时代。' },
@@ -629,4 +632,380 @@
   window.addEventListener('resize', resize);
   resize();
   setYear(MAX_YEAR);
+
+  // ================= 3D 视角（Three.js 懒加载） =================
+  var appEl = document.getElementById('solar-app');
+  var canvas3d = document.getElementById('solar-canvas3d');
+  var labelsBox = document.getElementById('solar-labels');
+  var modeBtn = document.getElementById('solar-mode');
+  var mode3d = false;
+  var threePromise = null;
+  var T3 = null;
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var el = document.createElement('script');
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = reject;
+      document.head.appendChild(el);
+    });
+  }
+
+  function loadThree() {
+    if (window.THREE && window.THREE.OrbitControls) return Promise.resolve();
+    if (threePromise) return threePromise;
+    threePromise = loadScript('https://gcore.jsdelivr.net/npm/three@0.128.0/build/three.min.js')
+      .then(function () {
+        return loadScript('https://gcore.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
+      });
+    return threePromise;
+  }
+
+  var RADIUS = { mercury: 0.16, venus: 0.27, earth: 0.29, mars: 0.20, jupiter: 0.78, saturn: 0.64, uranus: 0.44, neptune: 0.43, pluto: 0.15 };
+
+  function pos3D(p, tYears) {
+    var st = orbitalState(p, tYears);
+    var R = Math.pow(st.r, 0.6);
+    var x = R * Math.cos(st.ang);
+    var y = R * Math.sin(st.ang);
+    var inc = (p.inc || 0) * DEG;
+    return new THREE.Vector3(x, y * Math.cos(inc), y * Math.sin(inc));
+  }
+
+  function makeTexture(p) {
+    var c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    var g = c.getContext('2d');
+    g.fillStyle = p.color;
+    g.fillRect(0, 0, 512, 256);
+
+    if (p.id === 'earth') {
+      g.fillStyle = '#1c5fa8'; g.fillRect(0, 0, 512, 256);
+      for (var i = 0; i < 26; i++) {
+        g.fillStyle = 'rgba(80,150,90,' + (0.35 + Math.random() * 0.35) + ')';
+        g.beginPath();
+        g.ellipse(Math.random() * 512, 40 + Math.random() * 176, 10 + Math.random() * 26, 6 + Math.random() * 16, Math.random() * 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.fillStyle = 'rgba(240,248,255,0.9)';
+      g.fillRect(0, 0, 512, 18);
+      g.fillRect(0, 238, 512, 18);
+      for (var k = 0; k < 30; k++) {
+        g.fillStyle = 'rgba(255,255,255,' + (0.12 + Math.random() * 0.2) + ')';
+        g.beginPath();
+        g.ellipse(Math.random() * 512, Math.random() * 256, 14 + Math.random() * 30, 4 + Math.random() * 8, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+    } else {
+      var bands = ['jupiter', 'saturn', 'uranus', 'neptune'].indexOf(p.id) >= 0;
+      if (bands) {
+        for (var b = 0; b < 18; b++) {
+          var y = Math.random() * 256;
+          g.fillStyle = 'rgba(255,255,255,' + (0.03 + Math.random() * 0.07) + ')';
+          g.fillRect(0, y, 512, 3 + Math.random() * 10);
+          g.fillStyle = 'rgba(0,0,0,' + (0.02 + Math.random() * 0.05) + ')';
+          g.fillRect(0, y + 6, 512, 2 + Math.random() * 6);
+        }
+      }
+      for (var j = 0; j < 70; j++) {
+        g.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+        g.beginPath();
+        g.arc(Math.random() * 512, Math.random() * 256, 1 + Math.random() * 7, 0, Math.PI * 2);
+        g.fill();
+      }
+      if (p.id === 'jupiter') {
+        g.fillStyle = 'rgba(200,90,60,0.55)';
+        g.beginPath();
+        g.ellipse(360, 160, 26, 13, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function glowTexture() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 128;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255,240,190,1)');
+    grad.addColorStop(0.25, 'rgba(255,190,90,0.55)');
+    grad.addColorStop(1, 'rgba(255,150,50,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+
+  function orbit3DPoints(p) {
+    var pts = [];
+    for (var i = 0; i <= 160; i++) {
+      var E = i / 160 * Math.PI * 2;
+      var r = p.a * (1 - p.e * Math.cos(E));
+      var nu = 2 * Math.atan2(Math.sqrt(1 + p.e) * Math.sin(E / 2), Math.sqrt(1 - p.e) * Math.cos(E / 2));
+      var R = Math.pow(r, 0.6);
+      var ang = nu + p.peri * DEG;
+      var inc = p.inc * DEG;
+      pts.push(new THREE.Vector3(R * Math.cos(ang), R * Math.sin(ang) * Math.cos(inc), R * Math.sin(ang) * Math.sin(inc)));
+    }
+    return pts;
+  }
+
+  function mission3DPos(m, tYears) {
+    var yearNow = 2000 + tYears;
+    if (m.kind === 'planet') {
+      var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
+      var q = pos3D(p, tYears);
+      return q.clone().add(new THREE.Vector3(0.12, 0.12, 0.12));
+    }
+    if (m.kind === 'deep') {
+      var d = m.dist(yearNow);
+      if (d <= 0) return null;
+      var R = Math.pow(d, 0.45);
+      return new THREE.Vector3(R * Math.cos(m.angle * DEG), 0, R * Math.sin(m.angle * DEG));
+    }
+    if (m.kind === 'l2') {
+      var e = pos3D(PLANETS[2], tYears);
+      return e.multiplyScalar(1.01);
+    }
+    if (m.kind === 'sun') {
+      var rr = Math.pow(0.32, 0.6);
+      var a = (yearNow - 2018) * 55 * DEG;
+      return new THREE.Vector3(rr * Math.cos(a), 0, rr * Math.sin(a));
+    }
+    return null;
+  }
+
+  function init3D() {
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
+    camera.position.set(0, 6.2, 28);
+    var controls = new THREE.OrbitControls(camera, canvas3d);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.minDistance = 3;
+    controls.maxDistance = 90;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.18;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+    scene.add(new THREE.HemisphereLight(0x9db4ff, 0x101426, 0.38));
+    var sunLight = new THREE.PointLight(0xfff2d0, 1.35, 0, 0);
+    scene.add(sunLight);
+
+    var starGeo = new THREE.BufferGeometry();
+    var arr = [];
+    for (var i = 0; i < 1600; i++) {
+      var rr = 120 + Math.random() * 120;
+      var th = Math.random() * Math.PI * 2;
+      var ph = Math.acos(2 * Math.random() - 1);
+      arr.push(rr * Math.sin(ph) * Math.cos(th), rr * Math.cos(ph), rr * Math.sin(ph) * Math.sin(th));
+    }
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfd8ff, size: 0.55, transparent: true, opacity: 0.85 })));
+
+    var sun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+    scene.add(sun);
+    var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffbb55, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.set(4.6, 4.6, 1);
+    scene.add(glow);
+
+    var bodies = {};
+    var pickables = [];
+    var labels = [];
+    var missionMeshes = [];
+
+    PLANETS.forEach(function (p) {
+      var mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(RADIUS[p.id], 32, 24),
+        new THREE.MeshPhongMaterial({
+          map: makeTexture(p),
+          shininess: 10,
+          specular: 0x333333,
+          emissive: new THREE.Color(p.color).multiplyScalar(0.07)
+        })
+      );
+      scene.add(mesh);
+      mesh.userData = { type: 'planet', id: p.id };
+      pickables.push(mesh);
+
+      var line = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(orbit3DPoints(p)),
+        new THREE.LineBasicMaterial({ color: new THREE.Color(p.color), transparent: true, opacity: 0.34 })
+      );
+      scene.add(line);
+
+      if (p.id === 'saturn') {
+        var ring = new THREE.Mesh(
+          new THREE.RingGeometry(RADIUS[p.id] * 1.35, RADIUS[p.id] * 2.3, 72),
+          new THREE.MeshBasicMaterial({ color: 0xe6d3a3, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+        );
+        ring.rotation.x = Math.PI / 2;
+        mesh.add(ring);
+      }
+
+      var label = document.createElement('div');
+      label.className = 'solar-label';
+      label.textContent = p.zh;
+      labelsBox.appendChild(label);
+      labels.push({ el: label, obj: mesh, kind: 'planet', id: p.id });
+
+      bodies[p.id] = mesh;
+    });
+
+    MISSIONS.forEach(function (m) {
+      var mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 12, 10),
+        new THREE.MeshBasicMaterial({ color: 0xffd479 })
+      );
+      mesh.userData = { type: 'mission', id: m.id };
+      scene.add(mesh);
+      pickables.push(mesh);
+      missionMeshes.push({ mesh: mesh, mission: m });
+      if (m.kind === 'deep') {
+        var label = document.createElement('div');
+        label.className = 'solar-label mission';
+        label.textContent = m.zh;
+        labelsBox.appendChild(label);
+        labels.push({ el: label, obj: mesh, kind: 'mission', id: m.id });
+      }
+    });
+
+    T3 = { renderer: renderer, scene: scene, camera: camera, controls: controls, bodies: bodies, labels: labels, pickables: pickables, missionMeshes: missionMeshes, running: true };
+    resize3D();
+    bind3DClick();
+    requestAnimationFrame(render3D);
+  }
+
+  function resize3D() {
+    if (!T3) return;
+    var rect = stage.getBoundingClientRect();
+    T3.renderer.setSize(rect.width, rect.height, false);
+    T3.camera.aspect = rect.width / Math.max(1, rect.height);
+    T3.camera.updateProjectionMatrix();
+  }
+
+  function render3D() {
+    if (!T3) return;
+    if (!mode3d) { T3.running = false; return; }
+    T3.running = true;
+    T3.controls.update();
+    var tYears = year - 2000;
+    PLANETS.forEach(function (p) {
+      T3.bodies[p.id].position.copy(pos3D(p, tYears));
+    });
+    T3.missionMeshes.forEach(function (mm) {
+      var pos = mission3DPos(mm.mission, tYears);
+      if (pos) { mm.mesh.position.copy(pos); mm.mesh.visible = true; }
+      else { mm.mesh.visible = false; }
+    });
+    update3DLabels();
+    T3.renderer.render(T3.scene, T3.camera);
+    requestAnimationFrame(render3D);
+  }
+
+  function update3DLabels() {
+    var rect = stage.getBoundingClientRect();
+    var placed = [];
+    T3.labels.forEach(function (l) {
+      var v = new THREE.Vector3();
+      l.obj.getWorldPosition(v);
+      v.project(T3.camera);
+      var visible = v.z < 1;
+      l.el.style.display = visible ? 'block' : 'none';
+      if (!visible) return;
+      if (l.kind === 'planet' && ['mercury', 'venus', 'earth', 'mars'].indexOf(l.id) >= 0 && selected !== l.id) {
+        var camDist = T3.camera.position.length();
+        if (camDist > 20) { l.el.style.display = 'none'; return; }
+      }
+      var x = (v.x * 0.5 + 0.5) * rect.width;
+      var y = (-v.y * 0.5 + 0.5) * rect.height - 12;
+      var w = Math.max(28, l.el.textContent.length * 11);
+      var offsets = [0, -13, 13, -26];
+      for (var i = 0; i < offsets.length; i++) {
+        var box = { x: x - w / 2, y: y + offsets[i] - 9, w: w, h: 12 };
+        var clash = placed.some(function (b) {
+          return box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y;
+        });
+        if (!clash || l.id === selected) { y += offsets[i]; break; }
+      }
+      placed.push({ x: x - w / 2, y: y - 9, w: w, h: 12 });
+      l.el.style.left = x + 'px';
+      l.el.style.top = y + 'px';
+      l.el.classList.toggle('selected', selected === l.id);
+    });
+  }
+
+  function bind3DClick() {
+    var down = null;
+    canvas3d.addEventListener('pointerdown', function (e) { down = { x: e.clientX, y: e.clientY }; });
+    canvas3d.addEventListener('pointerup', function (e) {
+      if (!down) return;
+      var moved = Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6;
+      down = null;
+      if (moved || !T3) return;
+      var rect = canvas3d.getBoundingClientRect();
+      var mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      var ray = new THREE.Raycaster();
+      ray.setFromCamera(mouse, T3.camera);
+      var hits = ray.intersectObjects(T3.pickables, false);
+      if (!hits.length) return;
+      var obj = hits[0].object;
+      var tYears = year - 2000;
+      if (obj.userData.type === 'planet') {
+        selected = obj.userData.id;
+        var p = PLANETS.filter(function (x) { return x.id === selected; })[0];
+        showInfo(p);
+      } else {
+        selected = obj.userData.id;
+        var m = MISSIONS.filter(function (x) { return x.id === selected; })[0];
+        showMission(m, tYears);
+      }
+    });
+  }
+
+  function enter3D() {
+    mode3d = true;
+    appEl.classList.add('mode-3d');
+    modeBtn.textContent = '2D 视角';
+    var badge = document.querySelector('.solar-badge span');
+    if (badge) badge.textContent = '年 · 三维视角';
+    resize3D();
+    if (T3) { T3.running = true; requestAnimationFrame(render3D); }
+  }
+
+  function exit3D() {
+    mode3d = false;
+    appEl.classList.remove('mode-3d');
+    modeBtn.textContent = '3D 视角';
+    var badge2 = document.querySelector('.solar-badge span');
+    if (badge2) badge2.textContent = '年 · 二维俯视';
+    draw();
+  }
+
+  if (modeBtn) {
+    modeBtn.addEventListener('click', function () {
+      if (mode3d) { exit3D(); return; }
+      modeBtn.disabled = true;
+      modeBtn.textContent = '加载 3D…';
+      loadThree().then(function () {
+        if (!T3) init3D();
+        enter3D();
+        modeBtn.disabled = false;
+      }).catch(function () {
+        modeBtn.textContent = '3D 加载失败';
+        modeBtn.disabled = false;
+      });
+    });
+  }
+
+  window.addEventListener('resize', function () { if (mode3d) resize3D(); });
 })();
