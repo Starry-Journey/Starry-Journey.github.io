@@ -102,3 +102,6 @@ inject:
     - '<link rel="stylesheet" href="/css/comments.css">'
     - '<script>window.BLOG_COMMENTS_API="https://starryjourney.duckdns.org:8443"</script>'
     - '<script src="/js/comments.js" defer></script>'
+    - '<link rel="stylesheet" href="/css/chatbot.css">'
+    - '<script>window.BLOG_CHAT_API="https://starryjourney.duckdns.org:8443/bot/api/chat"</script>'
+    - '<script src="/js/chatbot.js" defer></script>'
