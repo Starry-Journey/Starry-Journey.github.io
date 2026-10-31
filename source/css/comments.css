@@ -1,0 +1,133 @@
+/* 评论区样式：与星空主题一致 */
+.blog-comments {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: rgba(18, 26, 48, 0.55);
+  border: 1px solid rgba(120, 140, 200, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+.blog-comments h3 {
+  margin: 0 0 0.9rem;
+  font-size: 1.05rem;
+  color: #cfd8ff;
+  letter-spacing: 0.02em;
+}
+
+.blog-comments .bc-count {
+  font-size: 0.8rem;
+  color: #8f9ac0;
+  font-weight: normal;
+  margin-left: 0.35rem;
+}
+
+.bc-list {
+  max-height: 420px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 4px;
+}
+
+.bc-empty {
+  color: #7f8aad;
+  font-size: 0.9rem;
+  padding: 0.6rem 0;
+}
+
+.bc-item {
+  padding: 0.55rem 0.2rem;
+  border-bottom: 1px dashed rgba(120, 140, 200, 0.14);
+}
+
+.bc-item:last-child {
+  border-bottom: none;
+}
+
+.bc-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.25rem;
+}
+
+.bc-meta b {
+  color: #9fc0ff;
+  font-weight: 600;
+}
+
+.bc-meta time {
+  color: #6f7a9a;
+  font-size: 0.75rem;
+}
+
+.bc-content {
+  color: #dfe5f7;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.bc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bc-nick,
+.bc-text {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 140, 200, 0.22);
+  background: rgba(8, 12, 24, 0.55);
+  color: #e6ebff;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.bc-nick:focus,
+.bc-text:focus {
+  border-color: #8f7cff;
+  box-shadow: 0 0 0 2px rgba(143, 124, 255, 0.18);
+}
+
+.bc-text {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.bc-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.bc-status {
+  color: #8f9ac0;
+  font-size: 0.8rem;
+}
+
+.bc-actions button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #5666ff, #8f7cff);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.bc-actions button:hover {
+  opacity: 0.88;
+}
+
+.bc-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
