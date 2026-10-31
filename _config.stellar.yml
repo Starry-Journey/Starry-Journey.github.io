@@ -46,9 +46,14 @@ menubar:
       url: /
     - id: news
       theme: '#8F7CFF'
-      icon: example:planet
+      icon: default:calendar
       title: 简报
       url: /news/
+    - id: solar
+      theme: '#F0B429'
+      icon: example:planet
+      title: 太阳系
+      url: /solar/
 
 ######## Main ########
 # 站点主结构树
