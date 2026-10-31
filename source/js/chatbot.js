@@ -13,14 +13,14 @@
   trigger.className = 'bc-chat-trigger';
   trigger.type = 'button';
   trigger.setAttribute('aria-label', '打开 AI 助手');
-  trigger.innerHTML = '<span class="bc-chat-fish">🐟</span><span class="bc-chat-label">问问大肥鱼</span>';
+  trigger.innerHTML = '<span class="bc-chat-badge">AI</span><span class="bc-chat-label">问问大肥鱼</span>';
 
   var panel = document.createElement('div');
   panel.className = 'bc-chat-panel';
   panel.innerHTML =
     '<div class="bc-chat-head"><span>大肥鱼 · AI 助手</span><button class="bc-chat-close" type="button" aria-label="关闭">×</button></div>' +
     '<div class="bc-chat-body"></div>' +
-    '<form class="bc-chat-form"><textarea rows="1" maxlength="500" placeholder="说点什么…（Enter 发送，Shift+Enter 换行）"></textarea><button type="submit">发送</button></form>';
+    '<form class="bc-chat-form"><textarea rows="1" maxlength="500" placeholder="说点什么…（Enter 发送）"></textarea><button type="submit">发送</button></form>';
   document.body.appendChild(panel);
 
   var body = panel.querySelector('.bc-chat-body');
