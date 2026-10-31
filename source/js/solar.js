@@ -36,6 +36,34 @@
     { id: 'pluto',   zh: '冥王星', en: 'Pluto',  a: 39.482,  e: 0.2488,  P: 247.94,   peri: 224.07,  L0: 238.93,  color: '#c9b8a3', size: 2.4, diameter: '2,377 km', day: '6.4 天', fact: '2006 年被重新归类为矮行星；轨道倾角 17°，明显斜出其他行星的平面。' }
   ];
 
+  // 标志性任务/探测器（简化轨迹：深空按平均日心距，行星任务附着在行星旁）
+  var MISSIONS = [
+    { id: 'sputnik', zh: '斯普特尼克 1 号', en: 'Sputnik 1', year: 1957, color: '#ffd479', kind: 'planet', planet: 'earth', note: '人类第一颗人造卫星，开启太空时代。' },
+    { id: 'apollo11', zh: '阿波罗 11 号', en: 'Apollo 11', year: 1969, color: '#ffd479', kind: 'planet', planet: 'earth', note: '首次载人登月，阿姆斯特朗留下“一小步”。' },
+    { id: 'voyager1', zh: '旅行者 1 号', en: 'Voyager 1', year: 1977, color: '#ffe08a', kind: 'deep', angle: 255, dist: function (y) { return Math.max(0, (y - 1977) * 3.35); }, note: '飞得最远的人造物体，已进入星际空间。' },
+    { id: 'voyager2', zh: '旅行者 2 号', en: 'Voyager 2', year: 1977, color: '#ffe08a', kind: 'deep', angle: 300, dist: function (y) { return Math.max(0, (y - 1977) * 2.75); }, note: '唯一造访过天王星和海王星的探测器。' },
+    { id: 'hubble', zh: '哈勃空间望远镜', en: 'Hubble', year: 1990, color: '#9fc0ff', kind: 'planet', planet: 'earth', note: '绕地运行 30 余年，彻底改变了现代天文学。' },
+    { id: 'iss', zh: '国际空间站', en: 'ISS', year: 1998, color: '#9fc0ff', kind: 'planet', planet: 'earth', note: '人类在近地轨道上的长期住所。' },
+    { id: 'cassini', zh: '卡西尼号', en: 'Cassini', year: 1997, color: '#e6d3a3', kind: 'planet', planet: 'saturn', note: '环绕土星 13 年，最后主动坠入土星大气。' },
+    { id: 'juno', zh: '朱诺号', en: 'Juno', year: 2011, color: '#d9b48f', kind: 'planet', planet: 'jupiter', note: '正在揭示木星内部结构与极区风暴。' },
+    { id: 'curiosity', zh: '好奇号', en: 'Curiosity', year: 2011, color: '#e07b5a', kind: 'planet', planet: 'mars', note: '在盖尔撞击坑寻找火星曾经宜居的证据。' },
+    { id: 'newhorizons', zh: '新视野号', en: 'New Horizons', year: 2006, color: '#c9b8a3', kind: 'deep', angle: 305, dist: function (y) { return Math.max(0, (y - 2006) * 4.1); }, note: '2015 年飞掠冥王星，人类第一次看清它。' },
+    { id: 'jwst', zh: '韦布空间望远镜', en: 'JWST', year: 2021, color: '#ffd479', kind: 'l2', note: '停在日地 L2 点，回望宇宙最早的星光。' },
+    { id: 'parker', zh: '帕克太阳探测器', en: 'Parker Solar Probe', year: 2018, color: '#ffb066', kind: 'sun', note: '人类造得最快的物体，近日点仅约 0.05 AU。' }
+  ];
+
+  var EVENTS = [
+    { year: 1957, label: '斯普特尼克' },
+    { year: 1969, label: '阿波罗 11' },
+    { year: 1977, label: '旅行者' },
+    { year: 1990, label: '哈勃' },
+    { year: 2015, label: '冥王星飞掠' },
+    { year: 2021, label: '韦布' }
+  ];
+
+  var showMissions = true;
+  var anim = null;
+
   function norm360(x) { return ((x % 360) + 360) % 360; }
   function compress(rAU) { return Math.pow(rAU, 0.6); }
   var MAX_R = compress(PLUTO_MAX());
@@ -197,7 +225,92 @@
       }
     });
 
+    if (showMissions) drawMissions(tYears);
     drawInset(tYears);
+  }
+
+  function missionScreen(m, tYears) {
+    var yearNow = 2000 + tYears;
+    if (m.kind === 'planet') {
+      var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
+      var q = planetScreen(p, tYears);
+      return { x: q.x + 10, y: q.y - 9 };
+    }
+    if (m.kind === 'deep') {
+      var d = m.dist(yearNow);
+      if (d <= 0) return null;
+      var R = Math.pow(d, 0.45);
+      return screen(R * Math.cos(m.angle * DEG), R * Math.sin(m.angle * DEG));
+    }
+    if (m.kind === 'l2') {
+      var e = planetScreen(PLANETS[2], tYears);
+      var sun = screen(0, 0);
+      var dx = e.x - sun.x, dy = e.y - sun.y;
+      var len = Math.hypot(dx, dy) || 1;
+      return { x: e.x + dx / len * 7, y: e.y + dy / len * 7 };
+    }
+    if (m.kind === 'sun') {
+      var rr = Math.pow(0.32, 0.6);
+      var a = (yearNow - 2018) * 55 * DEG;
+      return screen(rr * Math.cos(a), rr * Math.sin(a));
+    }
+    return null;
+  }
+
+  function drawMissions(tYears) {
+    MISSIONS.forEach(function (m) {
+      var q = missionScreen(m, tYears);
+      if (!q) return;
+      var active = selected === m.id;
+      ctx.save();
+      ctx.translate(q.x, q.y);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = active ? '#fff' : m.color;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 0.6;
+      ctx.fillRect(-2.6, -2.6, 5.2, 5.2);
+      ctx.strokeRect(-2.6, -2.6, 5.2, 5.2);
+      ctx.restore();
+      if (m.kind === 'deep' || active) {
+        ctx.font = '9px system-ui, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = active ? '#ffe9a8' : 'rgba(255,215,120,0.75)';
+        ctx.fillText(m.zh, q.x + 6, q.y + 3);
+      }
+      if (active) {
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, 8, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,224,138,0.9)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    });
+  }
+
+  function showMission(m, tYears) {
+    var yearNow = 2000 + tYears;
+    var rows = '<dt>发射</dt><dd>' + m.year + ' 年</dd>';
+    if (m.kind === 'deep') {
+      rows += '<dt>日心距</dt><dd>' + m.dist(yearNow).toFixed(1) + ' AU</dd>';
+    } else if (m.kind === 'l2') {
+      rows += '<dt>位置</dt><dd>日地 L2 点（约 1.01 AU）</dd>';
+    } else if (m.kind === 'sun') {
+      rows += '<dt>轨道</dt><dd>近日点约 0.05 AU</dd>';
+    } else {
+      var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
+      rows += '<dt>所在天体</dt><dd>' + p.zh + '</dd>';
+    }
+    infoEl.hidden = false;
+    infoEl.innerHTML =
+      '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
+      '<h3>' + m.zh + ' <small>' + m.en + '</small></h3>' +
+      '<dl>' + rows + '</dl>' +
+      '<p>' + m.note + '</p>';
+    infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
+      infoEl.hidden = true;
+      selected = null;
+      draw();
+    });
   }
 
   // 内太阳系放大镜
@@ -358,6 +471,23 @@
     var rect = canvas.getBoundingClientRect();
     var px = cx - rect.left, py = cy - rect.top;
     var tYears = year - 2000;
+
+    if (showMissions) {
+      var bestM = null, bestMD = 12;
+      MISSIONS.forEach(function (m) {
+        var q = missionScreen(m, tYears);
+        if (!q) return;
+        var d = Math.hypot(q.x - px, q.y - py);
+        if (d < bestMD) { bestMD = d; bestM = m; }
+      });
+      if (bestM) {
+        selected = bestM.id;
+        showMission(bestM, tYears);
+        draw();
+        return;
+      }
+    }
+
     var best = null, bestD = 18;
     PLANETS.forEach(function (p) {
       var q = planetScreen(p, tYears);
@@ -367,6 +497,7 @@
     if (best) {
       selected = best.id;
       showInfo(best);
+      zoomToPlanet(best, tYears);
     } else {
       selected = null;
       infoEl.hidden = true;
@@ -400,6 +531,52 @@
   }
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function zoomToPlanet(p, tYears) {
+    var pos = positionAt(p, tYears);
+    var targetZoom = Math.max(zoom, 4.2);
+    var tx = -pos.x * baseScale * targetZoom;
+    var ty = -pos.y * baseScale * targetZoom;
+    anim = { start: performance.now(), dur: 650, z0: zoom, x0: panX, y0: panY, z1: targetZoom, x1: tx, y1: ty };
+    requestAnimationFrame(stepAnim);
+  }
+
+  function stepAnim(ts) {
+    if (!anim) return;
+    var k = clamp((ts - anim.start) / anim.dur, 0, 1);
+    var e = 1 - Math.pow(1 - k, 3);
+    zoom = anim.z0 + (anim.z1 - anim.z0) * e;
+    panX = anim.x0 + (anim.x1 - anim.x0) * e;
+    panY = anim.y0 + (anim.y1 - anim.y0) * e;
+    draw();
+    if (k < 1) requestAnimationFrame(stepAnim); else anim = null;
+  }
+
+  function buildEvents() {
+    var box = document.getElementById('solar-events');
+    if (!box) return;
+    EVENTS.forEach(function (ev) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = ev.year + ' ' + ev.label;
+      btn.addEventListener('click', function () {
+        playing = false;
+        playBtn.textContent = '▶ 播放';
+        setYear(ev.year);
+        Array.prototype.forEach.call(box.children, function (c) { c.classList.remove('active'); });
+        btn.classList.add('active');
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  var missionsToggle = document.getElementById('solar-missions');
+  if (missionsToggle) {
+    missionsToggle.addEventListener('change', function () {
+      showMissions = missionsToggle.checked;
+      draw();
+    });
+  }
 
   // ---------- 控制 ----------
   function setYear(v) {
@@ -448,6 +625,7 @@
     requestAnimationFrame(tick);
   }
 
+  buildEvents();
   window.addEventListener('resize', resize);
   resize();
   setYear(MAX_YEAR);

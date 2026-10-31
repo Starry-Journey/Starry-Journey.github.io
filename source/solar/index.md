@@ -29,7 +29,10 @@ rightbar: false
       <option value="3">3×</option>
     </select>
     <button id="solar-reset" type="button">回到全图</button>
+    <label class="solar-toggle"><input type="checkbox" id="solar-missions" checked> 探测器</label>
   </div>
+
+  <div class="solar-events" id="solar-events" aria-label="历史事件"></div>
 
   <p class="solar-note">
     轨道数据来自 JPL 近似轨道根数（公版），行星位置按开普勒方程实时计算；距离经过压缩以便同屏显示。
