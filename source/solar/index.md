@@ -39,7 +39,7 @@ rightbar: false
 
   <p class="solar-note">
     轨道数据来自 JPL 近似轨道根数（公版），行星位置按开普勒方程实时计算；距离经过压缩以便同屏显示。
-    灵感来自 <a href="https://solar-system-atlas.pages.dev/solar/" target="_blank" rel="noopener">HUMAN ARTIFACTS</a>。
+    行星贴图：<a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>（CC BY 4.0，基于 NASA 数据）。灵感来自 <a href="https://solar-system-atlas.pages.dev/solar/" target="_blank" rel="noopener">HUMAN ARTIFACTS</a>。
   </p>
 </div>
 

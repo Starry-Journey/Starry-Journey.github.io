@@ -43,14 +43,14 @@
   var MISSIONS = [
     { id: 'sputnik', zh: '斯普特尼克 1 号', en: 'Sputnik 1', year: 1957, color: '#ffd479', kind: 'planet', planet: 'earth', note: '人类第一颗人造卫星，开启太空时代。' },
     { id: 'apollo11', zh: '阿波罗 11 号', en: 'Apollo 11', year: 1969, color: '#ffd479', kind: 'planet', planet: 'earth', note: '首次载人登月，阿姆斯特朗留下“一小步”。' },
-    { id: 'voyager1', zh: '旅行者 1 号', en: 'Voyager 1', year: 1977, color: '#ffe08a', kind: 'deep', angle: 255, dist: function (y) { return Math.max(0, (y - 1977) * 3.35); }, note: '飞得最远的人造物体，已进入星际空间。' },
-    { id: 'voyager2', zh: '旅行者 2 号', en: 'Voyager 2', year: 1977, color: '#ffe08a', kind: 'deep', angle: 300, dist: function (y) { return Math.max(0, (y - 1977) * 2.75); }, note: '唯一造访过天王星和海王星的探测器。' },
+    { id: 'voyager1', zh: '旅行者 1 号', en: 'Voyager 1', year: 1977, color: '#ffe08a', kind: 'deep', angle: 218, dist: function (y) { return Math.max(0, (y - 1977) * 3.35); }, note: '飞得最远的人造物体，已进入星际空间。' },
+    { id: 'voyager2', zh: '旅行者 2 号', en: 'Voyager 2', year: 1977, color: '#ffe08a', kind: 'deep', angle: 296, dist: function (y) { return Math.max(0, (y - 1977) * 2.75); }, note: '唯一造访过天王星和海王星的探测器。' },
     { id: 'hubble', zh: '哈勃空间望远镜', en: 'Hubble', year: 1990, color: '#9fc0ff', kind: 'planet', planet: 'earth', note: '绕地运行 30 余年，彻底改变了现代天文学。' },
     { id: 'iss', zh: '国际空间站', en: 'ISS', year: 1998, color: '#9fc0ff', kind: 'planet', planet: 'earth', note: '人类在近地轨道上的长期住所。' },
     { id: 'cassini', zh: '卡西尼号', en: 'Cassini', year: 1997, color: '#e6d3a3', kind: 'planet', planet: 'saturn', note: '环绕土星 13 年，最后主动坠入土星大气。' },
     { id: 'juno', zh: '朱诺号', en: 'Juno', year: 2011, color: '#d9b48f', kind: 'planet', planet: 'jupiter', note: '正在揭示木星内部结构与极区风暴。' },
     { id: 'curiosity', zh: '好奇号', en: 'Curiosity', year: 2011, color: '#e07b5a', kind: 'planet', planet: 'mars', note: '在盖尔撞击坑寻找火星曾经宜居的证据。' },
-    { id: 'newhorizons', zh: '新视野号', en: 'New Horizons', year: 2006, color: '#c9b8a3', kind: 'deep', angle: 305, dist: function (y) { return Math.max(0, (y - 2006) * 4.1); }, note: '2015 年飞掠冥王星，人类第一次看清它。' },
+    { id: 'newhorizons', zh: '新视野号', en: 'New Horizons', year: 2006, color: '#c9b8a3', kind: 'deep', angle: 332, dist: function (y) { return Math.max(0, (y - 2006) * 4.1); }, note: '2015 年飞掠冥王星，人类第一次看清它。' },
     { id: 'jwst', zh: '韦布空间望远镜', en: 'JWST', year: 2021, color: '#ffd479', kind: 'l2', note: '停在日地 L2 点，回望宇宙最早的星光。' },
     { id: 'parker', zh: '帕克太阳探测器', en: 'Parker Solar Probe', year: 2018, color: '#ffb066', kind: 'sun', note: '人类造得最快的物体，近日点仅约 0.05 AU。' }
   ];
@@ -608,6 +608,12 @@
   speedSel.addEventListener('change', function () { speed = parseFloat(speedSel.value); });
 
   resetBtn.addEventListener('click', function () {
+    if (mode3d && T3) {
+      T3.camera.position.set(0, 14, 22);
+      T3.controls.target.set(0, 0, 0);
+      T3.controls.update();
+      return;
+    }
     zoom = 1; panX = 0; panY = 0;
     selected = null; infoEl.hidden = true;
     draw();
@@ -662,11 +668,37 @@
     return threePromise;
   }
 
-  var RADIUS = { mercury: 0.16, venus: 0.27, earth: 0.29, mars: 0.20, jupiter: 0.78, saturn: 0.64, uranus: 0.44, neptune: 0.43, pluto: 0.15 };
+  var RADIUS = { mercury: 0.11, venus: 0.14, earth: 0.15, mars: 0.12, jupiter: 0.40, saturn: 0.34, uranus: 0.24, neptune: 0.24, pluto: 0.09 };
+
+  var TEXTURES = {
+    sun: '/images/textures/sun.jpg',
+    mercury: '/images/textures/mercury.jpg',
+    venus: '/images/textures/venus.jpg',
+    earth: '/images/textures/earth.jpg',
+    mars: '/images/textures/mars.jpg',
+    jupiter: '/images/textures/jupiter.jpg',
+    saturn: '/images/textures/saturn.jpg',
+    uranus: '/images/textures/uranus.jpg',
+    neptune: '/images/textures/neptune.jpg'
+  };
+  var texLoader = null;
+
+  function scale3D(rAU) { return Math.log(1 + rAU * 3) * 1.4 + Math.max(0, rAU - 2) * 0.06; }
+
+  function applyTexture(p, mesh) {
+    if (!TEXTURES[p.id]) return;
+    if (!texLoader) texLoader = new THREE.TextureLoader();
+    texLoader.load(TEXTURES[p.id], function (tex) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.anisotropy = 4;
+      mesh.material.map = tex;
+      mesh.material.needsUpdate = true;
+    });
+  }
 
   function pos3D(p, tYears) {
     var st = orbitalState(p, tYears);
-    var R = Math.pow(st.r, 0.6);
+    var R = scale3D(st.r);
     var x = R * Math.cos(st.ang);
     var y = R * Math.sin(st.ang);
     var inc = (p.inc || 0) * DEG;
@@ -745,7 +777,7 @@
       var E = i / 160 * Math.PI * 2;
       var r = p.a * (1 - p.e * Math.cos(E));
       var nu = 2 * Math.atan2(Math.sqrt(1 + p.e) * Math.sin(E / 2), Math.sqrt(1 - p.e) * Math.cos(E / 2));
-      var R = Math.pow(r, 0.6);
+      var R = scale3D(r);
       var ang = nu + p.peri * DEG;
       var inc = p.inc * DEG;
       pts.push(new THREE.Vector3(R * Math.cos(ang), R * Math.sin(ang) * Math.cos(inc), R * Math.sin(ang) * Math.sin(inc)));
@@ -758,13 +790,13 @@
     if (m.kind === 'planet') {
       var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
       var q = pos3D(p, tYears);
-      return q.clone().add(new THREE.Vector3(0.12, 0.12, 0.12));
+      return q.clone().add(new THREE.Vector3(0.18, 0.28, 0.18));
     }
     if (m.kind === 'deep') {
       var d = m.dist(yearNow);
       if (d <= 0) return null;
-      var R = Math.pow(d, 0.45);
-      return new THREE.Vector3(R * Math.cos(m.angle * DEG), 0, R * Math.sin(m.angle * DEG));
+      var R = Math.min(scale3D(d), 9.5);
+      return new THREE.Vector3(R * Math.cos(m.angle * DEG), 0.55, R * Math.sin(m.angle * DEG));
     }
     if (m.kind === 'l2') {
       var e = pos3D(PLANETS[2], tYears);
@@ -783,13 +815,13 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
-    camera.position.set(0, 6.2, 28);
+    camera.position.set(0, 14, 22);
     var controls = new THREE.OrbitControls(camera, canvas3d);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
     controls.minDistance = 3;
-    controls.maxDistance = 90;
+    controls.maxDistance = 80;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.18;
 
@@ -809,10 +841,17 @@
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfd8ff, size: 0.55, transparent: true, opacity: 0.85 })));
 
-    var sun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+    var sunMat = new THREE.MeshBasicMaterial({ color: 0xffe08a });
+    var sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), sunMat);
+    if (TEXTURES.sun) {
+      new THREE.TextureLoader().load(TEXTURES.sun, function (tex) {
+        sunMat.map = tex;
+        sunMat.needsUpdate = true;
+      });
+    }
     scene.add(sun);
     var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffbb55, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    glow.scale.set(4.6, 4.6, 1);
+    glow.scale.set(2.6, 2.6, 1);
     scene.add(glow);
 
     var bodies = {};
@@ -830,6 +869,7 @@
           emissive: new THREE.Color(p.color).multiplyScalar(0.07)
         })
       );
+      applyTexture(p, mesh);
       scene.add(mesh);
       mesh.userData = { type: 'planet', id: p.id };
       pickables.push(mesh);
@@ -925,7 +965,7 @@
       }
       var x = (v.x * 0.5 + 0.5) * rect.width;
       var y = (-v.y * 0.5 + 0.5) * rect.height - 12;
-      var w = Math.max(28, l.el.textContent.length * 11);
+      var w = Math.max(30, l.el.offsetWidth || l.el.textContent.length * 10);
       var offsets = [0, -13, 13, -26];
       for (var i = 0; i < offsets.length; i++) {
         var box = { x: x - w / 2, y: y + offsets[i] - 9, w: w, h: 12 };
