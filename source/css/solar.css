@@ -221,3 +221,66 @@
 .solar-label.selected {
   color: #fff;
 }
+
+.solar-stories {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.55rem;
+}
+.solar-stories button {
+  border: 1px solid rgba(143, 124, 255, 0.35);
+  background: rgba(40, 30, 90, 0.35);
+  color: #cfd8ff;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.solar-stories button:hover { border-color: #b3a4ff; color: #fff; }
+
+.solar-story {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(680px, calc(100% - 28px));
+  bottom: 16px;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: rgba(10, 16, 32, 0.92);
+  border: 1px solid rgba(143, 124, 255, 0.4);
+  color: #dfe5f7;
+  font-size: 0.85rem;
+  backdrop-filter: blur(10px);
+  z-index: 9998;
+}
+.solar-story-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+.solar-story-head b { color: #b3a4ff; }
+.solar-story-head span { color: #7f8aad; font-size: 0.72rem; }
+.solar-story-head button {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #8f9ac0;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.solar-story p { margin: 0 0 0.5rem; line-height: 1.6; }
+.solar-story-actions { display: flex; gap: 0.5rem; }
+.solar-story-actions button {
+  border: 1px solid rgba(120, 140, 200, 0.3);
+  background: rgba(14, 20, 40, 0.7);
+  color: #cfd8ff;
+  border-radius: 8px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+@media (max-width: 667px) {
+  .solar-story { bottom: 8px; left: 8px; right: 8px; }
+}

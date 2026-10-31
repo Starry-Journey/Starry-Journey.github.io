@@ -36,6 +36,20 @@ rightbar: false
   </div>
 
   <div class="solar-events" id="solar-events" aria-label="历史事件"></div>
+  <div class="solar-stories" id="solar-stories" aria-label="故事线"></div>
+
+  <div class="solar-story" id="solar-story" hidden>
+    <div class="solar-story-head">
+      <b id="solar-story-title"></b>
+      <span id="solar-story-progress"></span>
+      <button id="solar-story-close" type="button" aria-label="退出故事线">×</button>
+    </div>
+    <p id="solar-story-text"></p>
+    <div class="solar-story-actions">
+      <button id="solar-story-prev" type="button">上一步</button>
+      <button id="solar-story-next" type="button">下一步</button>
+    </div>
+  </div>
 
   <p class="solar-note">
     轨道数据来自 JPL 近似轨道根数（公版），行星位置按开普勒方程实时计算；距离经过压缩以便同屏显示。

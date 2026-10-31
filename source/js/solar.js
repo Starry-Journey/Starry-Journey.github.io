@@ -53,6 +53,63 @@
     { id: 'newhorizons', zh: '新视野号', en: 'New Horizons', year: 2006, color: '#c9b8a3', kind: 'deep', angle: 332, dist: function (y) { return Math.max(0, (y - 2006) * 4.1); }, note: '2015 年飞掠冥王星，人类第一次看清它。' },
     { id: 'jwst', zh: '韦布空间望远镜', en: 'JWST', year: 2021, color: '#ffd479', kind: 'l2', note: '停在日地 L2 点，回望宇宙最早的星光。' },
     { id: 'parker', zh: '帕克太阳探测器', en: 'Parker Solar Probe', year: 2018, color: '#ffb066', kind: 'sun', note: '人类造得最快的物体，近日点仅约 0.05 AU。' }
+,
+    { id: 'perseverance', zh: '毅力号', en: 'Perseverance', year: 2020, color: '#e07b5a', kind: 'planet', planet: 'mars', note: '在杰泽罗撞击坑采集岩芯，寻找古代微生物痕迹。' },
+    { id: 'tianwen1', zh: '天问一号', en: 'Tianwen-1', year: 2020, color: '#ffb066', kind: 'planet', planet: 'mars', note: '中国首次火星探测，祝融号在乌托邦平原着陆。' },
+    { id: 'change5', zh: '嫦娥五号', en: 'Chang’e 5', year: 2020, color: '#ffd479', kind: 'planet', planet: 'earth', note: '带回 1.7 kg 月壤，是 1976 年后首次月球采样返回。' },
+    { id: 'hayabusa2', zh: '隼鸟 2 号', en: 'Hayabusa2', year: 2014, color: '#c9b8a3', kind: 'deep', angle: 24, dist: function () { return 1.45; }, note: '从小行星龙宫带回地下样本，揭示太阳系早期物质。' },
+    { id: 'rosetta', zh: '罗塞塔号', en: 'Rosetta', year: 2004, color: '#9fc0ff', kind: 'deep', angle: 132, dist: function (y) { return y >= 2014 ? 3.6 : 0; }, note: '首次环绕并着陆彗星 67P，追踪冰与有机物的来源。' }
+  ];
+
+  var EXTRA = {
+    sputnik: { agency: '苏联', status: '1957–1958', end: 1958, target: '地球轨道', story: '直径 58 cm、重 83.6 kg，发出简单的“哔哔”信号，标志太空时代开始。' },
+    apollo11: { agency: 'NASA', status: '1969', end: 1969, target: '月球', story: '阿姆斯特朗和奥尔德林在静海着陆，人类第一次踏上另一个天体。' },
+    voyager1: { agency: 'NASA / JPL', status: '1977–', target: '星际空间', story: '飞掠木星、土星后一路向外，2012 年进入星际空间，目前约 164 AU。' },
+    voyager2: { agency: 'NASA / JPL', status: '1977–', target: '星际空间', story: '唯一造访天王星与海王星的探测器，2018 年进入星际空间。' },
+    hubble: { agency: 'NASA / ESA', status: '1990–', target: '近地轨道', story: '口径 2.4 米，30 多年里拍摄了深空、星云与系外行星大气。' },
+    iss: { agency: '多国合作', status: '1998–', target: '近地轨道', story: '人类持续驻留时间最长的空间站，约 90 分钟绕地球一圈。' },
+    cassini: { agency: 'NASA / ESA / ASI', status: '1997–2017', end: 2017, target: '土星', story: '环绕土星 13 年，发现土卫二喷泉，最终主动坠入土星大气。' },
+    juno: { agency: 'NASA', status: '2011–', target: '木星', story: '极轨探测器，正在测绘木星内部结构、磁场与极区风暴。' },
+    curiosity: { agency: 'NASA', status: '2011–', target: '火星', story: '在盖尔撞击坑钻探岩石，证明火星曾有湖泊与适宜环境。' },
+    perseverance: { agency: 'NASA', status: '2020–', target: '火星', story: '在杰泽罗撞击坑采集岩芯，等待未来任务取回地球。' },
+    tianwen1: { agency: 'CNSA', status: '2020–', target: '火星', story: '一次任务完成环绕、着陆、巡视，祝融号在乌托邦平原工作。' },
+    change5: { agency: 'CNSA', status: '2020', end: 2021, target: '月球', story: '带回 1.7 kg 月壤，是 1976 年后首次月球采样返回。' },
+    newhorizons: { agency: 'NASA', status: '2006–', target: '柯伊伯带', story: '2015 年飞掠冥王星，2019 年飞掠 Arrokoth，是人类造访过最远的天体。' },
+    jwst: { agency: 'NASA / ESA / CSA', status: '2021–', target: '日地 L2', story: '6.5 米主镜，在红外波段观测宇宙最早的星系与系外行星大气。' },
+    parker: { agency: 'NASA', status: '2018–', target: '日冕', story: '人类造得最快的物体，多次穿过太阳日冕，近日点约 0.05 AU。' },
+    hayabusa2: { agency: 'JAXA', status: '2014–', target: '小行星龙宫', story: '采集小行星地下样本并带回地球，揭示太阳系早期物质。' },
+    rosetta: { agency: 'ESA', status: '2004–2016', end: 2016, target: '彗星 67P', story: '首次环绕并着陆彗星，追踪太阳系早期的冰与有机物。' }
+  };
+  MISSIONS.forEach(function (m) { Object.assign(m, EXTRA[m.id] || {}); });
+
+  var STORIES = [
+    {
+      id: 'earth', title: '飞出地球',
+      steps: [
+        { year: 1957, focus: { mission: 'sputnik' }, text: '1957 年，斯普特尼克 1 号发出第一声“哔哔”。人类第一次把人造物体送上天。' },
+        { year: 1969, focus: { mission: 'apollo11' }, text: '12 年后，阿波罗 11 号让人类第一次踩上另一个天体。' },
+        { year: 1990, focus: { mission: 'hubble' }, text: '哈勃升空，把望远镜搬到大气层之上，深空照片从此改变了宇宙观。' },
+        { year: 1998, focus: { mission: 'iss' }, text: '国际空间站开始组装，人类在近地轨道有了长期住所。' }
+      ]
+    },
+    {
+      id: 'giants', title: '巨行星与深空',
+      steps: [
+        { year: 1977, focus: { mission: 'voyager1' }, text: '旅行者 1 号出发，利用行星引力弹弓一路向外，最终飞出太阳系。' },
+        { year: 1997, focus: { planet: 'saturn' }, text: '卡西尼号启程前往土星，13 年里发现了土卫二的冰喷泉。' },
+        { year: 2011, focus: { planet: 'jupiter' }, text: '朱诺号奔赴木星，用极轨揭开巨行星内部的秘密。' },
+        { year: 2015, focus: { planet: 'pluto' }, text: '新视野号飞掠冥王星，人类第一次看清这颗矮行星的“心”。' }
+      ]
+    },
+    {
+      id: 'light', title: '寻找宇宙的光',
+      steps: [
+        { year: 1990, focus: { planet: 'earth' }, text: '从哈勃开始，人类把目光投向宇宙深处；而地球本身，也成了一颗被观测的行星。' },
+        { year: 2018, focus: { sun: true }, text: '帕克太阳探测器冲向太阳，穿过日冕，研究太阳风的起源。' },
+        { year: 2021, focus: { mission: 'jwst' }, text: '韦布望远镜抵达日地 L2，用红外光回望宇宙最早的一批星系。' },
+        { year: 2026, focus: { planet: 'earth' }, text: '今天，一万多个人造物体正在太阳系里运行。这张图上的每一个点，都是一段故事。' }
+      ]
+    }
   ];
 
   var EVENTS = [
@@ -234,6 +291,8 @@
 
   function missionScreen(m, tYears) {
     var yearNow = 2000 + tYears;
+    if (yearNow < m.year) return null;
+    if (m.end && yearNow > m.end) return null;
     if (m.kind === 'planet') {
       var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
       var q = planetScreen(p, tYears);
@@ -303,12 +362,16 @@
       var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
       rows += '<dt>所在天体</dt><dd>' + p.zh + '</dd>';
     }
+    if (m.agency) rows += '<dt>机构</dt><dd>' + m.agency + '</dd>';
+    if (m.status) rows += '<dt>状态</dt><dd>' + m.status + '</dd>';
+    if (m.target) rows += '<dt>目标</dt><dd>' + m.target + '</dd>';
     infoEl.hidden = false;
     infoEl.innerHTML =
       '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
       '<h3>' + m.zh + ' <small>' + m.en + '</small></h3>' +
       '<dl>' + rows + '</dl>' +
-      '<p>' + m.note + '</p>';
+      '<p>' + m.note + '</p>' +
+      (m.story ? '<p class="solar-info-story">' + m.story + '</p>' : '');
     infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
       infoEl.hidden = true;
       selected = null;
@@ -555,6 +618,133 @@
     if (k < 1) requestAnimationFrame(stepAnim); else anim = null;
   }
 
+  function flyTo3D(targetPos, dist) {
+    if (!T3) return;
+    var dir = T3.camera.position.clone().sub(T3.controls.target);
+    if (dir.length() < 0.01) dir.set(0, 0.5, 1);
+    dir.normalize();
+    var toPos = targetPos.clone().add(dir.multiplyScalar(dist));
+    T3.fly = {
+      start: performance.now(),
+      dur: 1400,
+      fromPos: T3.camera.position.clone(),
+      fromTarget: T3.controls.target.clone(),
+      toPos: toPos,
+      toTarget: targetPos.clone()
+    };
+    T3.controls.enabled = false;
+    requestAnimationFrame(stepFly3D);
+  }
+
+  function stepFly3D(ts) {
+    if (!T3 || !T3.fly) return;
+    var k = clamp((ts - T3.fly.start) / T3.fly.dur, 0, 1);
+    var e = 1 - Math.pow(1 - k, 3);
+    T3.camera.position.lerpVectors(T3.fly.fromPos, T3.fly.toPos, e);
+    T3.controls.target.lerpVectors(T3.fly.fromTarget, T3.fly.toTarget, e);
+    T3.camera.lookAt(T3.controls.target);
+    if (k < 1) {
+      requestAnimationFrame(stepFly3D);
+    } else {
+      T3.fly = null;
+      T3.controls.enabled = true;
+      T3.controls.update();
+    }
+  }
+
+  function focusTarget(f) {
+    var tYears = year - 2000;
+    if (mode3d && T3) {
+      var pos = null, dist = 3;
+      if (f.planet) {
+        pos = T3.bodies[f.planet].position.clone();
+        dist = Math.max(0.9, RADIUS[f.planet] * 7);
+      } else if (f.mission) {
+        var mm = T3.missionMeshes.filter(function (x) { return x.mission.id === f.mission; })[0];
+        if (mm) {
+          var mp = mission3DPos(mm.mission, tYears);
+          if (!mp) mp = new THREE.Vector3(0, 0, 0);
+          pos = mp.clone();
+          dist = 2.2;
+        }
+      } else if (f.sun) {
+        pos = new THREE.Vector3(0, 0, 0);
+        dist = 4.5;
+      }
+      if (pos) flyTo3D(pos, dist);
+      return;
+    }
+    if (f.planet) {
+      var p = PLANETS.filter(function (x) { return x.id === f.planet; })[0];
+      selected = p.id;
+      showInfo(p);
+      zoomToPlanet(p, tYears);
+    } else if (f.mission) {
+      var m = MISSIONS.filter(function (x) { return x.id === f.mission; })[0];
+      selected = m.id;
+      showMission(m, tYears);
+    }
+  }
+
+  // ---------- 故事线 ----------
+  var storyState = null;
+  var storyPanel = document.getElementById('solar-story');
+  // 文章容器可能带 transform，fixed 会相对它定位；挂到 body 下避免
+  if (storyPanel && storyPanel.parentElement !== document.body) document.body.appendChild(storyPanel);
+  var storyTitle = document.getElementById('solar-story-title');
+  var storyText = document.getElementById('solar-story-text');
+  var storyProgress = document.getElementById('solar-story-progress');
+  var storyPrev = document.getElementById('solar-story-prev');
+  var storyNext = document.getElementById('solar-story-next');
+  var storyClose = document.getElementById('solar-story-close');
+
+  function startStory(story) {
+    storyState = { story: story, index: 0 };
+    storyPanel.hidden = false;
+    infoEl.hidden = true;
+    selected = null;
+    if (stage && stage.scrollIntoView) stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    gotoStoryStep(0);
+  }
+
+  function gotoStoryStep(i) {
+    if (!storyState) return;
+    var steps = storyState.story.steps;
+    storyState.index = clamp(i, 0, steps.length - 1);
+    var step = steps[storyState.index];
+    storyTitle.textContent = storyState.story.title;
+    storyText.textContent = step.text;
+    storyProgress.textContent = (storyState.index + 1) + ' / ' + steps.length;
+    storyPrev.disabled = storyState.index === 0;
+    storyNext.disabled = storyState.index === steps.length - 1;
+    playing = false;
+    playBtn.textContent = '▶ 播放';
+    setYear(step.year);
+    focusTarget(step.focus);
+    draw();
+  }
+
+  if (storyPrev) {
+    storyPrev.addEventListener('click', function () { gotoStoryStep(storyState.index - 1); });
+    storyNext.addEventListener('click', function () { gotoStoryStep(storyState.index + 1); });
+    storyClose.addEventListener('click', function () {
+      storyState = null;
+      storyPanel.hidden = true;
+    });
+  }
+
+  function buildStories() {
+    var box = document.getElementById('solar-stories');
+    if (!box) return;
+    STORIES.forEach(function (story) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '▶ ' + story.title;
+      btn.addEventListener('click', function () { startStory(story); });
+      box.appendChild(btn);
+    });
+  }
+
   function buildEvents() {
     var box = document.getElementById('solar-events');
     if (!box) return;
@@ -609,8 +799,10 @@
 
   resetBtn.addEventListener('click', function () {
     if (mode3d && T3) {
+      T3.fly = null;
       T3.camera.position.set(0, 14, 22);
       T3.controls.target.set(0, 0, 0);
+      T3.controls.enabled = true;
       T3.controls.update();
       return;
     }
@@ -635,6 +827,7 @@
   }
 
   buildEvents();
+  buildStories();
   window.addEventListener('resize', resize);
   resize();
   setYear(MAX_YEAR);
@@ -758,6 +951,20 @@
     return tex;
   }
 
+  function markerTexture() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 32;
+    var g = c.getContext('2d');
+    g.translate(16, 16);
+    g.rotate(Math.PI / 4);
+    g.fillStyle = '#ffd479';
+    g.strokeStyle = 'rgba(0,0,0,0.5)';
+    g.lineWidth = 2;
+    g.fillRect(-6, -6, 12, 12);
+    g.strokeRect(-6, -6, 12, 12);
+    return new THREE.CanvasTexture(c);
+  }
+
   function glowTexture() {
     var c = document.createElement('canvas');
     c.width = c.height = 128;
@@ -785,16 +992,29 @@
     return pts;
   }
 
+  function missionOffset(m) {
+    var idx = MISSIONS.indexOf(m);
+    var ang = idx * 1.9;
+    var rad = 0.32 + (idx % 4) * 0.1;
+    return new THREE.Vector3(Math.cos(ang) * rad, 0.18 + (idx % 3) * 0.08, Math.sin(ang) * rad);
+  }
+
   function mission3DPos(m, tYears) {
     var yearNow = 2000 + tYears;
+    if (yearNow < m.year) return null;
+    if (m.end && yearNow > m.end) return null;
     if (m.kind === 'planet') {
       var p = PLANETS.filter(function (x) { return x.id === m.planet; })[0];
       var q = pos3D(p, tYears);
-      return q.clone().add(new THREE.Vector3(0.18, 0.28, 0.18));
+      return q.clone().add(missionOffset(m));
     }
     if (m.kind === 'deep') {
       var d = m.dist(yearNow);
-      if (d <= 0) return null;
+      if (d <= 0) {
+        // 还没出发：停在地球附近
+        var e0 = pos3D(PLANETS[2], tYears);
+        return e0.clone().add(missionOffset(m));
+      }
       var R = Math.min(scale3D(d), 9.5);
       return new THREE.Vector3(R * Math.cos(m.angle * DEG), 0.55, R * Math.sin(m.angle * DEG));
     }
@@ -898,11 +1118,16 @@
       bodies[p.id] = mesh;
     });
 
+    var markerTex = markerTexture();
     MISSIONS.forEach(function (m) {
-      var mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.09, 12, 10),
-        new THREE.MeshBasicMaterial({ color: 0xffd479 })
-      );
+      var mesh = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: markerTex,
+        color: 0xffffff,
+        sizeAttenuation: false,
+        transparent: true,
+        depthWrite: false
+      }));
+      mesh.scale.set(0.016, 0.016, 1);
       mesh.userData = { type: 'mission', id: m.id };
       scene.add(mesh);
       pickables.push(mesh);
@@ -934,7 +1159,7 @@
     if (!T3) return;
     if (!mode3d) { T3.running = false; return; }
     T3.running = true;
-    T3.controls.update();
+    if (!T3.fly) T3.controls.update();
     var tYears = year - 2000;
     PLANETS.forEach(function (p) {
       T3.bodies[p.id].position.copy(pos3D(p, tYears));
@@ -956,9 +1181,13 @@
       var v = new THREE.Vector3();
       l.obj.getWorldPosition(v);
       v.project(T3.camera);
-      var visible = v.z < 1;
+      var visible = v.z < 1 && l.obj.visible;
       l.el.style.display = visible ? 'block' : 'none';
       if (!visible) return;
+      if (l.kind === 'mission' && selected !== l.id && T3.camera.position.length() < 7) {
+        l.el.style.display = 'none';
+        return;
+      }
       if (l.kind === 'planet' && ['mercury', 'venus', 'earth', 'mars'].indexOf(l.id) >= 0 && selected !== l.id) {
         var camDist = T3.camera.position.length();
         if (camDist > 20) { l.el.style.display = 'none'; return; }
@@ -1004,10 +1233,16 @@
         selected = obj.userData.id;
         var p = PLANETS.filter(function (x) { return x.id === selected; })[0];
         showInfo(p);
+        var wp = new THREE.Vector3();
+        obj.getWorldPosition(wp);
+        flyTo3D(wp, Math.max(0.9, RADIUS[selected] * 7));
       } else {
         selected = obj.userData.id;
         var m = MISSIONS.filter(function (x) { return x.id === selected; })[0];
         showMission(m, tYears);
+        var mp = new THREE.Vector3();
+        obj.getWorldPosition(mp);
+        flyTo3D(mp, 1.6);
       }
     });
   }
