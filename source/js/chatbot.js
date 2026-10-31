@@ -87,10 +87,13 @@
     body.appendChild(typing);
     body.scrollTop = body.scrollHeight;
 
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 30000);
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history.slice(-12) })
+      body: JSON.stringify({ messages: history.slice(-12) }),
+      signal: ctl.signal
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -105,7 +108,7 @@
         save();
         render();
       })
-      .then(function () { sending = false; sendBtn.disabled = false; });
+      .then(function () { clearTimeout(timer); sending = false; sendBtn.disabled = false; });
   }
 
   render();

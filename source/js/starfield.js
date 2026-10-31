@@ -9,6 +9,10 @@
     }
   } catch (e) {}
 
+  // 修复主题 logo 图片缺少 alt 与空 src
+  document.querySelectorAll('.logo-wrap img, img.avatar').forEach(function (img) {
+    if (!img.getAttribute('alt')) img.setAttribute('alt', 'Starry Journey');
+  });
   if (document.getElementById('starfield-root')) return;
 
   var root = document.createElement('div');

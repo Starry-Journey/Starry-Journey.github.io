@@ -56,7 +56,12 @@
     opts = opts || {};
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     if (token) opts.headers['X-Token'] = token;
-    return fetch(API + url, opts).then(function (r) { return r.json(); });
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 8000);
+    opts.signal = ctl.signal;
+    return fetch(API + url, opts)
+      .then(function (r) { return r.json(); })
+      .finally(function () { clearTimeout(timer); });
   }
   function render(msgs) {
     countEl.textContent = msgs.length;

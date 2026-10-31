@@ -97,11 +97,34 @@ deploy:
 inject:
   head:
     - '<script>try{if(!localStorage.getItem("Stellar.theme"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>'
-    - '<link rel="stylesheet" href="/css/starfield.css">'
-    - '<script src="/js/starfield.js" defer></script>'
-    - '<link rel="stylesheet" href="/css/comments.css">'
+    - '<link rel="stylesheet" href="/css/starfield.css?v=20261031">'
+    - '<script src="/js/starfield.js?v=20261031" defer></script>'
+    - '<link rel="stylesheet" href="/css/comments.css?v=20261031">'
     - '<script>window.BLOG_COMMENTS_API="https://starryjourney.duckdns.org:8443"</script>'
-    - '<script src="/js/comments.js" defer></script>'
-    - '<link rel="stylesheet" href="/css/chatbot.css">'
+    - '<script src="/js/comments.js?v=20261031" defer></script>'
+    - '<link rel="stylesheet" href="/css/chatbot.css?v=20261031">'
     - '<script>window.BLOG_CHAT_API="https://starryjourney.duckdns.org:8443/bot/api/chat"</script>'
-    - '<script src="/js/chatbot.js" defer></script>'
+    - '<script src="/js/chatbot.js?v=20261031" defer></script>'
+
+# 站点头像
+avatar: /images/avatar.svg
+
+# SEO / 订阅
+plugins:
+  - hexo-generator-sitemap
+  - hexo-generator-feed
+  - hexo-generator-robotstxt
+
+sitemap:
+  path: sitemap.xml
+  rel: false
+
+feed:
+  type: atom
+  path: atom.xml
+  limit: 20
+  content: false
+
+robotstxt:
+  useragent: '*'
+  sitemap: /sitemap.xml
