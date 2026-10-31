@@ -92,3 +92,10 @@ theme: stellar
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: ''
+
+# 星空主题注入
+inject:
+  head:
+    - '<script>try{if(!localStorage.getItem("Stellar.theme"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>'
+    - '<link rel="stylesheet" href="/css/starfield.css">'
+    - '<script src="/js/starfield.js" defer></script>'

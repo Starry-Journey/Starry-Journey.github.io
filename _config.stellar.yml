@@ -38,33 +38,17 @@ logo:
 
 # 侧边栏主功能导航菜单
 menubar:
-  items: # 可按照自己需求增加，符合以下格式即可
-    # id: 页面中高亮的 menu_id 
-    # theme: 高亮时的颜色，仅 svg 中 fill="currentColor" 时有效
-    # icon: 支持 svg/img 标签，可以定义在 icons.yml 文件中，也支持外部图片的 URL
-    # title: 标题
-    # url: 点击跳转到哪，支持相对路径和绝对路径
-    # - id: post
-    #   theme: '#1BCDFC'
-    #   icon: default:documents
-    #   title: 博客
-    #   url: /
-    # - id: wiki
-    #   theme: '#3DC550'
-    #   icon: example:notebook
-    #   title: 文档
-    #   url: /wiki/
-    # - id: explore
-    #   theme: '#FA6400'
-    #   icon: example:planet
-    #   title: 探索
-    #   url: /explore/
-    # - id: social
-    #   theme: '#F44336'
-    #   icon: example:chat
-    #   title: 社交
-    #   url: /friends/
-
+  items: # 可按照自己需求增加
+    - id: post
+      theme: '#1BCDFC'
+      icon: default:documents
+      title: 博客
+      url: /
+    - id: news
+      theme: '#8F7CFF'
+      icon: example:planet
+      title: 简报
+      url: /news/
 
 ######## Main ########
 # 站点主结构树
@@ -82,7 +66,7 @@ site_tree:
   index_blog:
     base_dir: blog # 只影响自动生成的页面路径
     menu_id: post # 未在 front-matter 中指定 menu_id 时，layout 为 post 的页面默认使用这里配置的 menu_id
-    leftbar: welcome, recent # for categories/tags/archives
+    leftbar: welcome # for categories/tags/archives
     rightbar: 
     nav_tabs:  # 近期发布 分类 标签 专栏 归档 and ...
       # '朋友文章': /friends/rss/
@@ -94,7 +78,7 @@ site_tree:
   index_wiki:
     base_dir: wiki # 只影响自动生成的页面路径
     menu_id: wiki # 未在 front-matter 中指定 menu_id 时，layout 为 wiki 的页面默认使用这里配置的 menu_id
-    leftbar: related, recent # for wiki
+    leftbar: related # for wiki
     rightbar: 
     nav_tabs:
       # 'more': https://github.com/xaoxuu
@@ -102,7 +86,7 @@ site_tree:
   # 博客文章内页配置
   post:
     menu_id: post # 未在 front-matter 中指定 menu_id 时，layout 为 post 的页面默认使用这里配置的 menu_id
-    leftbar: related, recent # for pages using 'layout:post'
+    leftbar: related # for pages using 'layout:post'
     rightbar: ghrepo, toc
   # 博客专栏文章内页配置
   topic:
@@ -110,14 +94,14 @@ site_tree:
   # 文档内页配置
   wiki:
     menu_id: wiki # 未在 front-matter 中指定 menu_id 时，layout 为 wiki 的页面默认使用这里配置的 menu_id
-    leftbar: tree, related, recent # for wiki
+    leftbar: tree, related # for wiki
     rightbar: ghrepo, toc
   # 笔记本列表页配置
   notebooks:
     base_dir: notebooks # 笔记本列表页的路径。以及未指定 base_dir 的笔记本的路径前缀。
     menu_id: notebooks # 笔记本列表页高亮的主导航栏菜单按钮。
     # 笔记本列表页的左侧栏和右侧栏。
-    leftbar: recent # recent within all notebooks
+    leftbar: #  within all notebooks
     rightbar: null
   # 笔记列表页配置
   notes:
@@ -126,30 +110,30 @@ site_tree:
     # 可以在笔记的 front-matter/menu_id 中覆盖此参数。
     menu_id: notebooks
     # 笔记列表页的左侧栏和右侧栏。可以在笔记本 yaml 的 leftbar 和 rightbar 字段中覆盖此参数。
-    leftbar: tagtree, recent # recent of current notebook
+    leftbar: tagtree #  of current notebook
     rightbar: null
   # 笔记页配置
   note:
     # 笔记页的左侧栏和右侧栏
     # 可以在笔记本 yaml 的 note_leftbar 和 note_rightbar 字段中覆盖此参数。
     # 可以在笔记的 front-matter/leftbar 和 rightbar 字段中覆盖此参数。
-    leftbar: tagtree, recent # recent of current notebook
+    leftbar: tagtree #  of current notebook
     rightbar: toc
   # 作者信息配置
   author: 
     base_dir: author # 只影响自动生成的页面路径
     menu_id: post
-    leftbar: recent
+    leftbar: 
     rightbar: 
   # 错误页配置
   error_page:
     menu_id: post
     '404': '/404.html'
-    leftbar: recent
+    leftbar: 
     rightbar: 
   # 其它自定义页面配置 layout: page
   page:
-    leftbar: recent
+    leftbar: 
     rightbar: toc
 
 
@@ -750,7 +734,7 @@ style:
     # 设置为纯色时，可以分别设置浅色和深色模式背景色
     background-color-light: var(--card) # var(--block) #'rgb(#C3C3C3)'
     background-color-dark: var(--card) # var(--block) #'rgb(#3C3C3C)'
-    background-image: url(https://gcore.jsdelivr.net/gh/cdn-x/placeholder@1.0.13/image/sidebar-bg1@small.jpg)
+    background-image: # 置空=不使用图片，让深色卡片背景生效
     blur-px: 100px
     blur-bg: var(--bg-a60)
     background-opacity: 0.8
