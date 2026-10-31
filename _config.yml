@@ -105,6 +105,7 @@ inject:
     - '<link rel="stylesheet" href="/css/chatbot.css?v=20261031">'
     - '<script>window.BLOG_CHAT_API="https://starryjourney.duckdns.org:8443/bot/api/chat"</script>'
     - '<script src="/js/chatbot.js?v=20261031" defer></script>'
+    - '<link rel="alternate" type="application/atom+xml" title="Starry Journey · 每日简报" href="/news/atom.xml">'
 
 # 站点头像
 avatar: /images/avatar.svg

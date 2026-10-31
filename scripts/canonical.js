@@ -11,5 +11,11 @@ hexo.extend.filter.register('after_render:html', function (str, data) {
   var href = base + '/' + path;
   if (href.charAt(href.length - 1) !== '/') href += '/';
 
-  return str.replace('</head>', '<link rel="canonical" href="' + href + '">\n</head>');
+  str = str.replace('</head>', '<link rel="canonical" href="' + href + '">\n</head>');
+
+  // 主题的 logo 图片没有 alt，补上（利于 SEO/无障碍）
+  str = str.replace(/<img([^>]*class="avatar"[^>]*)>/g, function (m, attrs) {
+    return /\balt=/.test(attrs) ? m : '<img' + attrs + ' alt="Starry Journey">';
+  });
+  return str;
 });
