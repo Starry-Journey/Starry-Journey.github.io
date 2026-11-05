@@ -1,0 +1,12 @@
+# 依赖
+node_modules/
+
+# Hexo 构建产物与缓存
+public/
+db.json
+
+# 日志与本地环境
+*.log
+.DS_Store
+.env
+.env.*
