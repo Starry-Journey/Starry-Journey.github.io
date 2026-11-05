@@ -35,7 +35,7 @@
     "hexo-theme-stellar": "^1.44.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.3",
+    "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^9.39.5",
     "@lhci/cli": "^0.15.1",
