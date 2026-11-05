@@ -1,0 +1,4 @@
+node_modules/
+public/
+source/js/vendor/
+package-lock.json

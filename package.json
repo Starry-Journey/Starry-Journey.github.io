@@ -6,7 +6,11 @@
     "build": "hexo generate",
     "clean": "hexo clean",
     "deploy": "hexo deploy",
-    "server": "hexo server"
+    "server": "hexo server",
+    "lint": "eslint source/js scripts tests playwright.config.js",
+    "format": "prettier --write \"source/js/**/*.js\" \"source/css/**/*.css\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.json\" \".github/**/*.yml\"",
+    "format:check": "prettier --check \"source/js/**/*.js\" \"source/css/**/*.css\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.json\" \".github/**/*.yml\"",
+    "test:e2e": "playwright test"
   },
   "hexo": {
     "version": "7.3.0"
@@ -27,5 +31,15 @@
     "hexo-theme-landscape": "^1.0.0",
     "hexo-theme-next": "^8.29.0",
     "hexo-theme-stellar": "^1.44.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.47.2",
+    "eslint": "^9.39.4",
+    "globals": "^17.14.0",
+    "http-server": "^14.1.1",
+    "prettier": "^3.9.10"
   }
 }

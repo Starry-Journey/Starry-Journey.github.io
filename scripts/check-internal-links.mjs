@@ -9,7 +9,7 @@ async function walk(dir) {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...await walk(p));
+    if (entry.isDirectory()) out.push(...(await walk(p)));
     else out.push(p);
   }
   return out;
@@ -17,7 +17,11 @@ async function walk(dir) {
 
 function targetFor(url) {
   let clean = url.split('#')[0].split('?')[0];
-  try { clean = decodeURIComponent(clean); } catch { /* 保持原样 */ }
+  try {
+    clean = decodeURIComponent(clean);
+  } catch {
+    /* 保持原样 */
+  }
   if (!clean || clean === '/') return 'public/index.html';
   const rel = clean.replace(/^\//, '');
   if (clean.endsWith('/')) return join('public', rel, 'index.html');

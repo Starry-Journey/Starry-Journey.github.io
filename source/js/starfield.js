@@ -7,7 +7,7 @@
     if (!localStorage.getItem('Stellar.theme')) {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
-  } catch (e) {}
+  } catch {}
 
   // 修复主题 logo 图片缺少 alt 与空 src
   document.querySelectorAll('.logo-wrap img, img.avatar').forEach(function (img) {
@@ -26,7 +26,8 @@
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var stars = [];
   var meteors = [];
-  var w = 0, h = 0;
+  var w = 0,
+    h = 0;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var lastMeteor = 0;
 
@@ -45,7 +46,7 @@
         r: Math.random() * 1.25 + 0.25,
         p: Math.random() * Math.PI * 2,
         s: 0.5 + Math.random() * 1.2,
-        hue: Math.random() < 0.18 ? 210 : (Math.random() < 0.5 ? 45 : 0) // 少量蓝/暖色星
+        hue: Math.random() < 0.18 ? 210 : Math.random() < 0.5 ? 45 : 0, // 少量蓝/暖色星
       });
     }
     if (reduce) drawStatic();
@@ -72,7 +73,7 @@
     ctx.clearRect(0, 0, w, h);
     for (var i = 0; i < stars.length; i++) {
       var st = stars[i];
-      var a = 0.30 + 0.60 * Math.abs(Math.sin(t * 0.0006 * st.s + st.p));
+      var a = 0.3 + 0.6 * Math.abs(Math.sin(t * 0.0006 * st.s + st.p));
       ctx.beginPath();
       ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
       ctx.fillStyle = starColor(st, a.toFixed(3));
@@ -88,7 +89,7 @@
         y: Math.random() * h * 0.35,
         vx: 4.5 + Math.random() * 2.5,
         vy: 1.8 + Math.random() * 1.2,
-        life: 1
+        life: 1,
       });
     }
     for (var m = meteors.length - 1; m >= 0; m--) {
@@ -96,7 +97,10 @@
       mo.x += mo.vx;
       mo.y += mo.vy;
       mo.life -= 0.012;
-      if (mo.life <= 0) { meteors.splice(m, 1); continue; }
+      if (mo.life <= 0) {
+        meteors.splice(m, 1);
+        continue;
+      }
       var grad = ctx.createLinearGradient(mo.x, mo.y, mo.x - mo.vx * 12, mo.y - mo.vy * 12);
       grad.addColorStop(0, 'rgba(255,255,255,' + (mo.life * 0.9).toFixed(3) + ')');
       grad.addColorStop(1, 'rgba(255,255,255,0)');

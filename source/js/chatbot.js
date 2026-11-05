@@ -6,14 +6,19 @@
   var STORE = 'bc_chat_history';
 
   var history = [];
-  try { history = JSON.parse(localStorage.getItem(STORE) || '[]'); } catch (e) { history = []; }
+  try {
+    history = JSON.parse(localStorage.getItem(STORE) || '[]');
+  } catch {
+    history = [];
+  }
   if (!Array.isArray(history)) history = [];
 
   var trigger = document.createElement('button');
   trigger.className = 'bc-chat-trigger';
   trigger.type = 'button';
   trigger.setAttribute('aria-label', '打开 AI 助手');
-  trigger.innerHTML = '<span class="bc-chat-badge">AI</span><span class="bc-chat-label">问问大肥鱼</span>';
+  trigger.innerHTML =
+    '<span class="bc-chat-badge">AI</span><span class="bc-chat-label">问问大肥鱼</span>';
 
   var panel = document.createElement('div');
   panel.className = 'bc-chat-panel';
@@ -46,31 +51,50 @@
 
   function render() {
     if (!history.length) {
-      body.innerHTML = '<div class="bc-chat-welcome">嗨，我是大肥鱼～ 想聊博客、简报，或者随便聊聊都可以呀。</div>';
+      body.innerHTML =
+        '<div class="bc-chat-welcome">嗨，我是大肥鱼～ 想聊博客、简报，或者随便聊聊都可以呀。</div>';
       return;
     }
-    body.innerHTML = history.map(function (m) {
-      return '<div class="bc-chat-msg ' + (m.role === 'user' ? 'me' : 'bot') + '">' + esc(m.content).replace(/\n/g, '<br>') + '</div>';
-    }).join('');
+    body.innerHTML = history
+      .map(function (m) {
+        return (
+          '<div class="bc-chat-msg ' +
+          (m.role === 'user' ? 'me' : 'bot') +
+          '">' +
+          esc(m.content).replace(/\n/g, '<br>') +
+          '</div>'
+        );
+      })
+      .join('');
     body.scrollTop = body.scrollHeight;
   }
 
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(history.slice(-20))); } catch (e) {}
+    try {
+      localStorage.setItem(STORE, JSON.stringify(history.slice(-20)));
+    } catch {}
   }
 
   function open() {
     panel.classList.add('open');
     input.focus();
   }
-  function close() { panel.classList.remove('open'); }
+  function close() {
+    panel.classList.remove('open');
+  }
 
   trigger.addEventListener('click', open);
   panel.querySelector('.bc-chat-close').addEventListener('click', close);
   input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
   });
-  form.addEventListener('submit', function (e) { e.preventDefault(); send(); });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    send();
+  });
 
   var sending = false;
   function send() {
@@ -88,14 +112,18 @@
     body.scrollTop = body.scrollHeight;
 
     var ctl = new AbortController();
-    var timer = setTimeout(function () { ctl.abort(); }, 30000);
+    var timer = setTimeout(function () {
+      ctl.abort();
+    }, 30000);
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history.slice(-12) }),
-      signal: ctl.signal
+      signal: ctl.signal,
     })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        return r.json();
+      })
       .then(function (data) {
         typing.remove();
         history.push({ role: 'assistant', content: data.reply || data.error || '呜…好像出错了' });
@@ -108,7 +136,11 @@
         save();
         render();
       })
-      .then(function () { clearTimeout(timer); sending = false; sendBtn.disabled = false; });
+      .then(function () {
+        clearTimeout(timer);
+        sending = false;
+        sendBtn.disabled = false;
+      });
   }
 
   render();
