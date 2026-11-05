@@ -21,3 +21,28 @@ test('3D 视角可切换（本地 three.js）', async ({ page }) => {
   await expect(page.locator('#solar-canvas3d')).toBeVisible({ timeout: 20000 });
   await expect(page.locator('#solar-mode')).toHaveText('2D 视角');
 });
+
+test('3D 初始化耗时与帧率在预算内', async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto('/solar/');
+  const t0 = Date.now();
+  await page.locator('#solar-mode').click();
+  await expect(page.locator('#solar-canvas3d')).toBeVisible({ timeout: 20000 });
+  const initMs = Date.now() - t0;
+  const fps = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        let frames = 0;
+        const start = performance.now();
+        function loop(t) {
+          frames += 1;
+          if (t - start < 1500) requestAnimationFrame(loop);
+          else resolve(frames / ((t - start) / 1000));
+        }
+        requestAnimationFrame(loop);
+      })
+  );
+  console.log(`[perf] 3D init ${initMs}ms, fps ${fps.toFixed(1)}`);
+  expect(initMs).toBeLessThan(12000);
+  expect(fps).toBeGreaterThan(15);
+});

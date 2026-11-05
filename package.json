@@ -10,7 +10,9 @@
     "lint": "eslint source/js scripts tests playwright.config.js",
     "format": "prettier --write \"source/js/**/*.js\" \"source/css/**/*.css\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.json\" \".github/**/*.yml\"",
     "format:check": "prettier --check \"source/js/**/*.js\" \"source/css/**/*.css\" \"scripts/**/*.mjs\" \"tests/**/*.js\" \"*.json\" \".github/**/*.yml\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:budget": "node scripts/check-bundle-budget.mjs",
+    "test:lighthouse": "lhci autorun"
   },
   "hexo": {
     "version": "7.3.0"
@@ -36,6 +38,7 @@
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^9.39.5",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.47.2",
     "eslint": "^9.39.4",
     "globals": "^17.14.0",

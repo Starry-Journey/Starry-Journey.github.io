@@ -41,6 +41,12 @@ jobs:
       - name: E2E smoke tests
         run: npm run test:e2e
 
+      - name: Bundle budget
+        run: npm run test:budget
+
+      - name: Lighthouse budget
+        run: npm run test:lighthouse
+
   pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
