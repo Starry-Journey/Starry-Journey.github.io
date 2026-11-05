@@ -1,9 +1,11 @@
-/* 博客 AI 助手：左上角入口 + 右下角对话面板 */
+/* 博客 AI 助手：左上角入口 + 右下角对话面板（/v1/chat/stream SSE） */
 (function () {
   'use strict';
 
-  var API = window.BLOG_CHAT_API || 'https://starryjourney.duckdns.org:8443/bot/api/chat';
+  var API = window.BLOG_API_BASE || 'https://starryjourney.duckdns.org:8443';
+  var TOKEN_KEY = 'bc_api_token';
   var STORE = 'bc_chat_history';
+  var CONV_KEY = 'bc_chat_conv';
 
   var history = [];
   try {
@@ -33,7 +35,6 @@
   var input = panel.querySelector('textarea');
   var sendBtn = panel.querySelector('button[type=submit]');
 
-  // 桌面端挂到侧边栏左上角；找不到就浮动在左下
   var header = document.querySelector('.l_left .header');
   if (header) {
     trigger.classList.add('in-header');
@@ -72,7 +73,9 @@
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify(history.slice(-20)));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 
   function open() {
@@ -96,6 +99,21 @@
     send();
   });
 
+  var token = localStorage.getItem(TOKEN_KEY) || '';
+  function ensureToken(force) {
+    if (token && !force) return Promise.resolve(token);
+    return fetch(API + '/v1/auth/device', { method: 'POST' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('无法获取令牌');
+        return r.json();
+      })
+      .then(function (data) {
+        token = data.token;
+        localStorage.setItem(TOKEN_KEY, token);
+        return token;
+      });
+  }
+
   var sending = false;
   function send() {
     var text = input.value.trim();
@@ -105,41 +123,101 @@
     history.push({ role: 'user', content: text });
     input.value = '';
     render();
-    var typing = document.createElement('div');
-    typing.className = 'bc-chat-msg bot typing';
-    typing.textContent = '大肥鱼正在想…';
-    body.appendChild(typing);
+
+    var botEl = document.createElement('div');
+    botEl.className = 'bc-chat-msg bot';
+    botEl.textContent = '大肥鱼正在想…';
+    body.appendChild(botEl);
     body.scrollTop = body.scrollHeight;
 
     var ctl = new AbortController();
     var timer = setTimeout(function () {
       ctl.abort();
-    }, 30000);
-    fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history.slice(-12) }),
-      signal: ctl.signal,
-    })
-      .then(function (r) {
-        return r.json();
-      })
-      .then(function (data) {
-        typing.remove();
-        history.push({ role: 'assistant', content: data.reply || data.error || '呜…好像出错了' });
+    }, 60000);
+    var reply = '';
+
+    function finish(errorText) {
+      clearTimeout(timer);
+      sending = false;
+      sendBtn.disabled = false;
+      if (errorText && !reply) {
+        botEl.textContent = errorText;
+      } else {
+        history.push({ role: 'assistant', content: reply || '呜…好像出错了' });
         save();
         render();
+      }
+    }
+
+    function handleEvent(name, data) {
+      var payload;
+      try {
+        payload = JSON.parse(data);
+      } catch {
+        return;
+      }
+      if (name === 'meta' && payload.conversation_id) {
+        localStorage.setItem(CONV_KEY, String(payload.conversation_id));
+      } else if (name === 'delta' && payload.text) {
+        reply += payload.text;
+        botEl.textContent = reply;
+        body.scrollTop = body.scrollHeight;
+      } else if (name === 'error') {
+        finish(payload.message || '大肥鱼暂时离线');
+      }
+    }
+
+    ensureToken()
+      .then(function (t) {
+        var conv = localStorage.getItem(CONV_KEY);
+        return fetch(API + '/v1/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
+          body: JSON.stringify({ message: text, conversation_id: conv ? Number(conv) : null }),
+          signal: ctl.signal,
+        });
       })
-      .catch(function () {
-        typing.remove();
-        history.push({ role: 'assistant', content: '呜…网络好像不太行，等下再试试嘛' });
-        save();
-        render();
+      .then(function (res) {
+        if (res.status === 401) {
+          localStorage.removeItem(TOKEN_KEY);
+          token = '';
+          throw new Error('登录状态失效，请再点一次发送');
+        }
+        if (!res.ok)
+          return res.json().then(function (b) {
+            throw new Error(b.detail || '请求失败');
+          });
+        if (!res.body) throw new Error('浏览器不支持流式响应');
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+
+        function pump() {
+          return reader.read().then(function (result) {
+            if (result.done) return;
+            buffer += decoder.decode(result.value, { stream: true });
+            var idx;
+            while ((idx = buffer.indexOf('\n\n')) >= 0) {
+              var raw = buffer.slice(0, idx);
+              buffer = buffer.slice(idx + 2);
+              var name = 'message';
+              var data = '';
+              raw.split('\n').forEach(function (line) {
+                if (line.indexOf('event:') === 0) name = line.slice(6).trim();
+                else if (line.indexOf('data:') === 0) data += line.slice(5).trim();
+              });
+              handleEvent(name, data);
+            }
+            return pump();
+          });
+        }
+        return pump().then(function () {
+          finish();
+        });
       })
-      .then(function () {
-        clearTimeout(timer);
-        sending = false;
-        sendBtn.disabled = false;
+      .catch(function (err) {
+        finish(err.name === 'AbortError' ? '等太久啦，稍后再试' : err.message || '网络好像不太行');
       });
   }
 
