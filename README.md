@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Starry-Journey/Starry-Journey.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/Starry-Journey/Starry-Journey.github.io/actions/workflows/ci.yml)
 
-个人博客 + 每日资讯简报 + 太阳系互动地图 + 自建评论区与 AI 助手。
+个人博客 + 每日资讯简报 + 太阳系互动地图 + 自建评论区 + 星盘与 AI 解读。
 
 - 站点：<https://starry-journey.github.io/>
 - 太阳系地图：<https://starry-journey.github.io/solar/>
@@ -13,7 +13,7 @@
 - Hexo 7 + Stellar 主题，GitHub Actions 构建，GitHub Pages 托管
 - 太阳系页面：Canvas 2D + Three.js（本地 vendor，无 CDN 依赖）
 - 评论区：自建 C++ 聊天室服务 + nginx
-- AI 助手：Python + DeepSeek
+- AI 解读：Python + DeepSeek（星盘专属）
 - 内容管线：VPS 上的新闻雷达（systemd timer）
 
 ## 本地开发

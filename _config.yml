@@ -97,14 +97,11 @@ deploy:
 inject:
   head:
     - '<script>try{if(!localStorage.getItem("Stellar.theme"))document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>'
-    - '<link rel="stylesheet" href="/css/starfield.css?v=20261106">'
-    - '<script src="/js/starfield.js?v=20261106" defer></script>'
-    - '<link rel="stylesheet" href="/css/comments.css?v=20261106">'
+    - '<link rel="stylesheet" href="/css/starfield.css?v=20261107">'
+    - '<script src="/js/starfield.js?v=20261107" defer></script>'
+    - '<link rel="stylesheet" href="/css/comments.css?v=20261107">'
     - '<script>window.BLOG_COMMENTS_API="https://starryjourney.duckdns.org:8443"</script>'
-    - '<script src="/js/comments.js?v=20261106" defer></script>'
-    - '<link rel="stylesheet" href="/css/chatbot.css?v=20261106">'
-    - '<script>window.BLOG_CHAT_API="https://starryjourney.duckdns.org:8443/bot/api/chat"</script>'
-    - '<script src="/js/chatbot.js?v=20261106" defer></script>'
+    - '<script src="/js/comments.js?v=20261107" defer></script>'
     - '<link rel="alternate" type="application/atom+xml" title="Starry Journey · 每日简报" href="/news/atom.xml">'
 
 # 站点头像
