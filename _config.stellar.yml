@@ -54,6 +54,11 @@ menubar:
       icon: example:planet
       title: 太阳系
       url: /solar/
+    - id: astro
+      theme: '#C084FC'
+      icon: rating:star
+      title: 星盘
+      url: /astro/
 
 ######## Main ########
 # 站点主结构树

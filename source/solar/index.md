@@ -6,7 +6,7 @@ description: 一张可玩的太阳系俯视图：真实椭圆轨道、1957–202
 rightbar: false
 ---
 
-<link rel="stylesheet" href="/css/solar.css?v=20261031">
+<link rel="stylesheet" href="/css/solar.css?v=20261106">
 
 <div id="solar-app">
   <div class="solar-stage">
@@ -57,4 +57,4 @@ rightbar: false
   </p>
 </div>
 
-<script src="/js/solar.js?v=20261031"></script>
+<script src="/js/solar.js?v=20261106"></script>
