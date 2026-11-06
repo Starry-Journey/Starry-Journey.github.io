@@ -6,7 +6,7 @@ description: 输入出生时间与地点，生成一张可交互的西洋星盘�
 rightbar: false
 ---
 
-<link rel="stylesheet" href="/css/astro.css?v=20261106">
+<link rel="stylesheet" href="/css/astro.css?v=20261107">
 
 <div id="astro-app">
   <section class="astro-card astro-form-card">
@@ -52,8 +52,19 @@ rightbar: false
       <div class="astro-panel"><h3>行星</h3><ul id="astro-planets"></ul></div>
       <div class="astro-panel"><h3>宫位</h3><ul id="astro-houses"></ul></div>
       <div class="astro-panel"><h3>相位</h3><ul id="astro-aspects"></ul></div>
+      <div class="astro-panel"><h3>元素分布</h3><div id="astro-elements"></div></div>
     </div>
-    <button type="button" id="astro-delete" class="astro-delete">删除这张星盘</button>
+    <div class="astro-actions">
+      <button type="button" id="astro-reading-btn">让大肥鱼解读这张星盘</button>
+      <button type="button" id="astro-download" class="astro-download">保存星盘图片</button>
+      <button type="button" id="astro-delete" class="astro-delete">删除这张星盘</button>
+    </div>
+  </section>
+
+  <section class="astro-reading" id="astro-reading" hidden>
+    <h3>大肥鱼 · 星盘解读</h3>
+    <div class="astro-reading-text" id="astro-reading-text"></div>
+    <p class="astro-note">AI 解读仅供娱乐与自我探索，不构成任何决策建议。</p>
   </section>
 
   <section class="astro-saved" id="astro-saved">
@@ -62,4 +73,4 @@ rightbar: false
   </section>
 </div>
 
-<script src="/js/astro.js?v=20261106"></script>
+<script src="/js/astro.js?v=20261107"></script>

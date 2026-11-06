@@ -59,6 +59,25 @@
     sextile: 'rgba(192,132,252,0.5)',
     conjunction: 'rgba(255,212,121,0.4)',
   };
+  var GLYPH = {
+    Sun: '☉',
+    Moon: '☽',
+    Mercury: '☿',
+    Venus: '♀',
+    Mars: '♂',
+    Jupiter: '♃',
+    Saturn: '♄',
+    Uranus: '♅',
+    Neptune: '♆',
+    Pluto: '♇',
+    TrueNode: '☊',
+  };
+  var ELEMENTS = [
+    { name: '火', color: '#ff8a5c', signs: ['Aries', 'Leo', 'Sagittarius'] },
+    { name: '土', color: '#c9a86a', signs: ['Taurus', 'Virgo', 'Capricorn'] },
+    { name: '风', color: '#7ad7ff', signs: ['Gemini', 'Libra', 'Aquarius'] },
+    { name: '水', color: '#8f9bff', signs: ['Cancer', 'Scorpio', 'Pisces'] },
+  ];
   var CITIES = [
     { n: '北京', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai' },
     { n: '上海', lat: 31.2304, lon: 121.4737, tz: 'Asia/Shanghai' },
@@ -118,6 +137,14 @@
   var cityInput = document.getElementById('a-city');
   var cityList = document.getElementById('astro-cities');
   var savedList = document.getElementById('astro-saved-list');
+  var readingEl = document.getElementById('astro-reading');
+  var readingText = document.getElementById('astro-reading-text');
+  var readingBtn = document.getElementById('astro-reading-btn');
+  var downloadBtn = document.getElementById('astro-download');
+  var elementsEl = document.getElementById('astro-elements');
+  var tip = document.createElement('div');
+  tip.className = 'astro-tip';
+  if (canvas && canvas.parentElement) canvas.parentElement.appendChild(tip);
 
   if (!form || !canvas) return;
 
@@ -280,11 +307,12 @@
       var lon = absLon(p);
       var pt = pos(lon, r * 0.58);
       g.fillStyle = '#ffd479';
-      g.beginPath();
-      g.arc(pt[0], pt[1], 3.2, 0, Math.PI * 2);
-      g.fill();
+      g.font = '16px serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(GLYPH[p.name] || '•', pt[0], pt[1]);
 
-      var label = pos(lon, r * 0.58 + (idx % 2 === 0 ? 14 : -14));
+      var label = pos(lon, r * 0.58 + (idx % 2 === 0 ? 18 : -18));
       g.fillStyle = '#eef2ff';
       g.font = '11px ui-monospace, monospace';
       g.textAlign = 'center';
@@ -312,6 +340,45 @@
       .join('');
   }
 
+  function renderElements(chart) {
+    if (!elementsEl) return;
+    var counts = {};
+    ELEMENTS.forEach(function (e) {
+      counts[e.name] = 0;
+    });
+    (chart.planets || []).forEach(function (p) {
+      if (p.name === 'TrueNode') return;
+      ELEMENTS.forEach(function (e) {
+        if (e.signs.indexOf(p.sign) >= 0) counts[e.name] += 1;
+      });
+    });
+    var total =
+      Object.keys(counts).reduce(function (a, k) {
+        return a + counts[k];
+      }, 0) || 1;
+    elementsEl.innerHTML = ELEMENTS.map(function (e) {
+      var pct = Math.round((counts[e.name] / total) * 100);
+      return (
+        '<div class="astro-element-row"><span>' +
+        e.name +
+        '</span><div class="astro-element-bar"><i style="width:' +
+        pct +
+        '%;background:' +
+        e.color +
+        '"></i></div><span>' +
+        counts[e.name] +
+        '</span></div>'
+      );
+    }).join('');
+  }
+
+  function showReading(text) {
+    if (!readingEl || !readingText) return;
+    readingEl.hidden = false;
+    readingText.textContent = text;
+    readingText.classList.remove('placeholder');
+  }
+
   function render(chart) {
     lastChart = chart;
     drawWheel(chart);
@@ -336,6 +403,8 @@
         ];
       })
     );
+    renderElements(chart);
+    if (chart.reading) showReading(chart.reading);
     resultEl.hidden = false;
   }
 
@@ -436,6 +505,95 @@
       .then(function (chart) {
         currentId = chart.id;
         render(chart);
+        if (readingBtn) {
+          readingBtn.addEventListener('click', function () {
+            if (!currentId) return;
+            readingBtn.disabled = true;
+            if (readingEl && readingText) {
+              readingEl.hidden = false;
+              readingText.textContent = '大肥鱼正在感受这张星盘…';
+              readingText.classList.add('placeholder');
+            }
+            api('/v1/charts/' + currentId + '/reading', { method: 'POST' })
+              .then(function (data) {
+                showReading(data.reading);
+                if (lastChart) lastChart.reading = data.reading;
+              })
+              .catch(function (err) {
+                if (readingText) readingText.textContent = err.message || '解读暂时失败';
+              })
+              .then(function () {
+                readingBtn.disabled = false;
+              });
+          });
+        }
+
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', function () {
+            if (!lastChart) return;
+            var src = canvas;
+            var out = document.createElement('canvas');
+            out.width = src.width;
+            out.height = src.height + Math.round(src.width * 0.12);
+            var g = out.getContext('2d');
+            g.fillStyle = '#070b18';
+            g.fillRect(0, 0, out.width, out.height);
+            g.drawImage(src, 0, 0);
+            var fs = Math.round(out.width * 0.018);
+            g.fillStyle = '#e6e9ff';
+            g.font = fs + 'px ui-monospace, monospace';
+            g.textAlign = 'center';
+            g.fillText(
+              'Starry Journey · ' + (lastChart.label || '星盘'),
+              out.width / 2,
+              src.height + fs * 1.6
+            );
+            g.fillStyle = '#8f9bc4';
+            g.font = Math.round(fs * 0.85) + 'px ui-monospace, monospace';
+            g.fillText(captionEl.textContent, out.width / 2, src.height + fs * 3.2);
+            var a = document.createElement('a');
+            a.download = 'astro-' + (lastChart.label || 'chart') + '.png';
+            a.href = out.toDataURL('image/png');
+            a.click();
+          });
+        }
+
+        // 星盘悬停提示
+        if (canvas) {
+          canvas.addEventListener('mousemove', function (e) {
+            if (!lastChart) return;
+            var rect = canvas.getBoundingClientRect();
+            var mx = e.clientX - rect.left;
+            var my = e.clientY - rect.top;
+            var size = rect.width;
+            var cx = size / 2;
+            var cy = size / 2;
+            var R = size / 2 - 14;
+            var r = R * 0.72;
+            var asc = absLon(lastChart.houses[0] || lastChart.ascendant);
+            var best = null;
+            (lastChart.planets || []).forEach(function (p) {
+              var lon = absLon(p);
+              var ang = Math.PI - (lon - asc) * (Math.PI / 180);
+              var x = cx + Math.cos(ang) * r * 0.58;
+              var y = cy + Math.sin(ang) * r * 0.58;
+              var d = Math.hypot(mx - x, my - y);
+              if (!best || d < best.d) best = { d: d, p: p };
+            });
+            if (best && best.d < 16) {
+              tip.textContent = (PLANET_CN[best.p.name] || best.p.name) + ' · ' + fmt(best.p);
+              tip.style.left = mx + 14 + 'px';
+              tip.style.top = my + 12 + 'px';
+              tip.classList.add('show');
+            } else {
+              tip.classList.remove('show');
+            }
+          });
+          canvas.addEventListener('mouseleave', function () {
+            tip.classList.remove('show');
+          });
+        }
+
         loadSaved();
         setStatus('');
         resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -461,6 +619,95 @@
         setStatus(err.message || '删除失败');
       });
   });
+
+  if (readingBtn) {
+    readingBtn.addEventListener('click', function () {
+      if (!currentId) return;
+      readingBtn.disabled = true;
+      if (readingEl && readingText) {
+        readingEl.hidden = false;
+        readingText.textContent = '大肥鱼正在感受这张星盘…';
+        readingText.classList.add('placeholder');
+      }
+      api('/v1/charts/' + currentId + '/reading', { method: 'POST' })
+        .then(function (data) {
+          showReading(data.reading);
+          if (lastChart) lastChart.reading = data.reading;
+        })
+        .catch(function (err) {
+          if (readingText) readingText.textContent = err.message || '解读暂时失败';
+        })
+        .then(function () {
+          readingBtn.disabled = false;
+        });
+    });
+  }
+
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', function () {
+      if (!lastChart) return;
+      var src = canvas;
+      var out = document.createElement('canvas');
+      out.width = src.width;
+      out.height = src.height + Math.round(src.width * 0.12);
+      var g = out.getContext('2d');
+      g.fillStyle = '#070b18';
+      g.fillRect(0, 0, out.width, out.height);
+      g.drawImage(src, 0, 0);
+      var fs = Math.round(out.width * 0.018);
+      g.fillStyle = '#e6e9ff';
+      g.font = fs + 'px ui-monospace, monospace';
+      g.textAlign = 'center';
+      g.fillText(
+        'Starry Journey · ' + (lastChart.label || '星盘'),
+        out.width / 2,
+        src.height + fs * 1.6
+      );
+      g.fillStyle = '#8f9bc4';
+      g.font = Math.round(fs * 0.85) + 'px ui-monospace, monospace';
+      g.fillText(captionEl.textContent, out.width / 2, src.height + fs * 3.2);
+      var a = document.createElement('a');
+      a.download = 'astro-' + (lastChart.label || 'chart') + '.png';
+      a.href = out.toDataURL('image/png');
+      a.click();
+    });
+  }
+
+  // 星盘悬停提示
+  if (canvas) {
+    canvas.addEventListener('mousemove', function (e) {
+      if (!lastChart) return;
+      var rect = canvas.getBoundingClientRect();
+      var mx = e.clientX - rect.left;
+      var my = e.clientY - rect.top;
+      var size = rect.width;
+      var cx = size / 2;
+      var cy = size / 2;
+      var R = size / 2 - 14;
+      var r = R * 0.72;
+      var asc = absLon(lastChart.houses[0] || lastChart.ascendant);
+      var best = null;
+      (lastChart.planets || []).forEach(function (p) {
+        var lon = absLon(p);
+        var ang = Math.PI - (lon - asc) * (Math.PI / 180);
+        var x = cx + Math.cos(ang) * r * 0.58;
+        var y = cy + Math.sin(ang) * r * 0.58;
+        var d = Math.hypot(mx - x, my - y);
+        if (!best || d < best.d) best = { d: d, p: p };
+      });
+      if (best && best.d < 16) {
+        tip.textContent = (PLANET_CN[best.p.name] || best.p.name) + ' · ' + fmt(best.p);
+        tip.style.left = mx + 14 + 'px';
+        tip.style.top = my + 12 + 'px';
+        tip.classList.add('show');
+      } else {
+        tip.classList.remove('show');
+      }
+    });
+    canvas.addEventListener('mouseleave', function () {
+      tip.classList.remove('show');
+    });
+  }
 
   loadSaved();
 

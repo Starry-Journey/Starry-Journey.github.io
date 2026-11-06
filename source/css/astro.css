@@ -106,6 +106,7 @@
 }
 
 .astro-wheel-card {
+  position: relative;
   border: 1px solid var(--astro-line);
   border-radius: 16px;
   background: radial-gradient(
@@ -269,4 +270,102 @@
   .astro-city {
     grid-column: 1 / -1;
   }
+}
+
+.astro-download {
+  border: 1px solid var(--astro-line);
+  background: rgba(143, 124, 255, 0.08);
+  color: var(--astro-text);
+  border-radius: 9px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.astro-download:hover {
+  background: rgba(143, 124, 255, 0.16);
+}
+
+.astro-reading {
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(192, 132, 252, 0.16), transparent 55%),
+    linear-gradient(160deg, rgba(20, 14, 38, 0.95), rgba(8, 12, 26, 0.9));
+  padding: 1.1rem 1.2rem;
+}
+
+.astro-reading h3 {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+  color: #e9d5ff;
+}
+
+.astro-reading-text {
+  font-size: 0.9rem;
+  line-height: 1.85;
+  color: #e6e9ff;
+  white-space: pre-wrap;
+}
+
+.astro-reading-text .placeholder {
+  color: var(--astro-dim);
+}
+
+.astro-elements {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.astro-element-row {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--astro-dim);
+}
+
+.astro-element-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(143, 124, 255, 0.12);
+  overflow: hidden;
+}
+
+.astro-element-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.astro-tip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  background: rgba(8, 12, 26, 0.96);
+  color: #eef2ff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.astro-tip.show {
+  opacity: 1;
+}
+
+.astro-actions .astro-download {
+  background: rgba(143, 124, 255, 0.08);
+  color: var(--astro-text);
+  border: 1px solid var(--astro-line);
+}
+
+.astro-actions .astro-delete {
+  background: rgba(255, 112, 112, 0.08);
+  color: #ff9b9b;
+  border: 1px solid rgba(255, 112, 112, 0.4);
 }
