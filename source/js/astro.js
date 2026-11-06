@@ -531,28 +531,110 @@
         if (downloadBtn) {
           downloadBtn.addEventListener('click', function () {
             if (!lastChart) return;
-            var src = canvas;
+            var W = 1080;
+            var pad = 56;
+            var img = canvas;
+            var imgW = W - pad * 2;
+            var imgH = Math.round((img.height / img.width) * imgW);
+            var reading = (lastChart.reading || readingText.textContent || '').trim();
+            var readingLines = [];
+            var measure = document.createElement('canvas').getContext('2d');
+            var fs = 24;
+            measure.font = fs + 'px ui-sans-serif, system-ui, sans-serif';
+            var maxW = W - pad * 2 - 18;
+            reading.split('\n').forEach(function (para) {
+              var line = '';
+              for (var i = 0; i < para.length; i += 1) {
+                var test = line + para[i];
+                if (measure.measureText(test).width > maxW && line) {
+                  readingLines.push(line);
+                  line = para[i];
+                } else {
+                  line = test;
+                }
+              }
+              if (line) readingLines.push(line);
+              if (readingLines.length) readingLines.push('');
+            });
+            if (!reading)
+              readingLines = ['生成星盘后点「让大肥鱼解读这张星盘」，这里会出现一段专属解读。'];
+            readingLines = readingLines.slice(0, 26);
+
+            var headerH = 150;
+            var bigH = 120;
+            var footerH = 90;
+            var readingH = readingLines.length * 38;
+            var H = headerH + imgH + bigH + readingH + footerH;
+
             var out = document.createElement('canvas');
-            out.width = src.width;
-            out.height = src.height + Math.round(src.width * 0.12);
+            out.width = W;
+            out.height = H;
             var g = out.getContext('2d');
-            g.fillStyle = '#070b18';
-            g.fillRect(0, 0, out.width, out.height);
-            g.drawImage(src, 0, 0);
-            var fs = Math.round(out.width * 0.018);
-            g.fillStyle = '#e6e9ff';
-            g.font = fs + 'px ui-monospace, monospace';
-            g.textAlign = 'center';
-            g.fillText(
-              'Starry Journey · ' + (lastChart.label || '星盘'),
-              out.width / 2,
-              src.height + fs * 1.6
-            );
+            var bg = g.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#0b1024');
+            bg.addColorStop(0.5, '#070b18');
+            bg.addColorStop(1, '#120a24');
+            g.fillStyle = bg;
+            g.fillRect(0, 0, W, H);
+
+            g.fillStyle = '#ffffff';
+            g.font = '600 42px ui-sans-serif, system-ui, sans-serif';
+            g.textAlign = 'left';
+            g.fillText('Starry Journey · 星盘', pad, 78);
             g.fillStyle = '#8f9bc4';
-            g.font = Math.round(fs * 0.85) + 'px ui-monospace, monospace';
-            g.fillText(captionEl.textContent, out.width / 2, src.height + fs * 3.2);
+            g.font = '22px ui-monospace, monospace';
+            g.fillText(
+              (lastChart.label || '未命名星盘') + ' · ' + new Date().toISOString().slice(0, 10),
+              pad,
+              116
+            );
+
+            g.drawImage(img, pad, headerH, imgW, imgH);
+
+            var sun = (lastChart.planets || []).filter(function (p) {
+              return p.name === 'Sun';
+            })[0];
+            var moon = (lastChart.planets || []).filter(function (p) {
+              return p.name === 'Moon';
+            })[0];
+            var asc = lastChart.houses && lastChart.houses[0];
+            var items = [
+              ['☉ 太阳', sun ? fmt(sun) : '-'],
+              ['☽ 月亮', moon ? fmt(moon) : '-'],
+              ['ASC 上升', asc ? fmt(asc) : '-'],
+            ];
+            var colW = (W - pad * 2) / 3;
+            var bigY = headerH + imgH + 42;
+            g.textAlign = 'center';
+            items.forEach(function (it, i) {
+              var cx = pad + colW * i + colW / 2;
+              g.fillStyle = '#8f9bc4';
+              g.font = '20px ui-monospace, monospace';
+              g.fillText(it[0], cx, bigY);
+              g.fillStyle = '#eef2ff';
+              g.font = '600 26px ui-sans-serif, system-ui, sans-serif';
+              g.fillText(it[1], cx, bigY + 34);
+            });
+
+            g.textAlign = 'left';
+            g.fillStyle = '#e6e9ff';
+            g.font = fs + 'px ui-sans-serif, system-ui, sans-serif';
+            var y = bigY + 90;
+            readingLines.forEach(function (line) {
+              if (line === '') {
+                y += 14;
+                return;
+              }
+              g.fillText(line, pad, y);
+              y += 38;
+            });
+
+            g.fillStyle = '#6f7ba3';
+            g.font = '18px ui-monospace, monospace';
+            g.fillText('starry-journey.github.io/astro · AI 解读仅供娱乐与自我探索', pad, H - 34);
+
             var a = document.createElement('a');
-            a.download = 'astro-' + (lastChart.label || 'chart') + '.png';
+            a.download = 'astro-card-' + (lastChart.label || 'chart') + '.png';
             a.href = out.toDataURL('image/png');
             a.click();
           });
@@ -640,36 +722,6 @@
         .then(function () {
           readingBtn.disabled = false;
         });
-    });
-  }
-
-  if (downloadBtn) {
-    downloadBtn.addEventListener('click', function () {
-      if (!lastChart) return;
-      var src = canvas;
-      var out = document.createElement('canvas');
-      out.width = src.width;
-      out.height = src.height + Math.round(src.width * 0.12);
-      var g = out.getContext('2d');
-      g.fillStyle = '#070b18';
-      g.fillRect(0, 0, out.width, out.height);
-      g.drawImage(src, 0, 0);
-      var fs = Math.round(out.width * 0.018);
-      g.fillStyle = '#e6e9ff';
-      g.font = fs + 'px ui-monospace, monospace';
-      g.textAlign = 'center';
-      g.fillText(
-        'Starry Journey · ' + (lastChart.label || '星盘'),
-        out.width / 2,
-        src.height + fs * 1.6
-      );
-      g.fillStyle = '#8f9bc4';
-      g.font = Math.round(fs * 0.85) + 'px ui-monospace, monospace';
-      g.fillText(captionEl.textContent, out.width / 2, src.height + fs * 3.2);
-      var a = document.createElement('a');
-      a.download = 'astro-' + (lastChart.label || 'chart') + '.png';
-      a.href = out.toDataURL('image/png');
-      a.click();
     });
   }
 

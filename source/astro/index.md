@@ -6,7 +6,7 @@ description: 输入出生时间与地点，生成一张可交互的西洋星盘�
 rightbar: false
 ---
 
-<link rel="stylesheet" href="/css/astro.css?v=20261107">
+<link rel="stylesheet" href="/css/astro.css?v=20261108">
 
 <div id="astro-app">
   <section class="astro-card astro-form-card">
@@ -56,7 +56,7 @@ rightbar: false
     </div>
     <div class="astro-actions">
       <button type="button" id="astro-reading-btn">让大肥鱼解读这张星盘</button>
-      <button type="button" id="astro-download" class="astro-download">保存星盘图片</button>
+      <button type="button" id="astro-download" class="astro-download">保存分享卡片</button>
       <button type="button" id="astro-delete" class="astro-delete">删除这张星盘</button>
     </div>
   </section>
@@ -73,4 +73,4 @@ rightbar: false
   </section>
 </div>
 
-<script src="/js/astro.js?v=20261107"></script>
+<script src="/js/astro.js?v=20261108"></script>
