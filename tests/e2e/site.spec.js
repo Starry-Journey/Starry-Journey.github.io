@@ -46,3 +46,11 @@ test('3D 初始化耗时与帧率在预算内', async ({ page }) => {
   expect(initMs).toBeLessThan(12000);
   expect(fps).toBeGreaterThan(15);
 });
+
+test('星盘页面加载与表单可用', async ({ page }) => {
+  await page.goto('/astro/');
+  await expect(page.locator('#astro-form')).toBeVisible();
+  await expect(page.locator('#a-date')).toHaveValue('2000-01-01');
+  await expect(page.locator('#a-submit')).toBeEnabled();
+  await expect(page.locator('a[title="星盘"]')).toBeVisible();
+});

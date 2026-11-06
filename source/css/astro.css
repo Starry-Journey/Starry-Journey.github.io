@@ -1,0 +1,201 @@
+#astro-app {
+  --astro-line: rgba(143, 124, 255, 0.28);
+  --astro-soft: rgba(143, 124, 255, 0.1);
+  --astro-text: #dbe3ff;
+  --astro-dim: #8f9bc4;
+  --astro-accent: #c084fc;
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+  color: var(--astro-text);
+}
+
+.astro-card {
+  border: 1px solid var(--astro-line);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(12, 18, 38, 0.92), rgba(8, 12, 26, 0.86));
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.astro-card h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.astro-sub {
+  margin: 0 0 1rem;
+  color: var(--astro-dim);
+  font-size: 0.85rem;
+}
+
+.astro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+}
+
+.astro-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--astro-dim);
+}
+
+.astro-grid input,
+.astro-grid select {
+  width: 100%;
+  border: 1px solid var(--astro-line);
+  border-radius: 9px;
+  background: rgba(6, 10, 22, 0.8);
+  color: var(--astro-text);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.astro-grid input:focus,
+.astro-grid select:focus {
+  outline: none;
+  border-color: var(--astro-accent);
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.15);
+}
+
+.astro-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.astro-actions button {
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #8f7cff, #c084fc);
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.astro-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.astro-status {
+  font-size: 0.82rem;
+  color: var(--astro-dim);
+}
+
+.astro-note {
+  margin: 0.9rem 0 0;
+  font-size: 0.76rem;
+  color: #6f7ba3;
+}
+
+.astro-result {
+  display: grid;
+  gap: 1rem;
+}
+
+.astro-result[hidden] {
+  display: none;
+}
+
+.astro-wheel-card {
+  border: 1px solid var(--astro-line);
+  border-radius: 16px;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(143, 124, 255, 0.12),
+    rgba(6, 10, 22, 0.92) 70%
+  );
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+#astro-wheel {
+  max-width: 100%;
+  height: auto;
+}
+
+.astro-wheel-caption {
+  font-size: 0.8rem;
+  color: var(--astro-dim);
+  text-align: center;
+}
+
+.astro-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.astro-panel {
+  border: 1px solid var(--astro-line);
+  border-radius: 14px;
+  background: rgba(8, 12, 26, 0.75);
+  padding: 0.8rem 0.9rem;
+}
+
+.astro-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--astro-accent);
+  letter-spacing: 0.04em;
+}
+
+.astro-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.astro-panel li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  border-bottom: 1px dashed rgba(143, 124, 255, 0.12);
+  padding-bottom: 0.25rem;
+}
+
+.astro-panel li:last-child {
+  border-bottom: none;
+}
+
+.astro-panel .dim {
+  color: var(--astro-dim);
+}
+
+.astro-delete {
+  justify-self: start;
+  border: 1px solid rgba(255, 112, 112, 0.4);
+  background: rgba(255, 112, 112, 0.08);
+  color: #ff9b9b;
+  border-radius: 9px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.astro-delete:hover {
+  background: rgba(255, 112, 112, 0.16);
+}
+
+@media (max-width: 720px) {
+  .astro-card {
+    padding: 0.9rem;
+  }
+  .astro-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
