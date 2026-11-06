@@ -52,6 +52,58 @@
     square: '四分',
     sextile: '六分',
   };
+  var ASPECT_COLOR = {
+    opposition: 'rgba(122,162,255,0.55)',
+    trine: 'rgba(110,231,168,0.55)',
+    square: 'rgba(255,138,138,0.55)',
+    sextile: 'rgba(192,132,252,0.5)',
+    conjunction: 'rgba(255,212,121,0.4)',
+  };
+  var CITIES = [
+    { n: '北京', lat: 39.9042, lon: 116.4074, tz: 'Asia/Shanghai' },
+    { n: '上海', lat: 31.2304, lon: 121.4737, tz: 'Asia/Shanghai' },
+    { n: '广州', lat: 23.1291, lon: 113.2644, tz: 'Asia/Shanghai' },
+    { n: '深圳', lat: 22.5431, lon: 114.0579, tz: 'Asia/Shanghai' },
+    { n: '成都', lat: 30.5728, lon: 104.0668, tz: 'Asia/Shanghai' },
+    { n: '杭州', lat: 30.2741, lon: 120.1551, tz: 'Asia/Shanghai' },
+    { n: '南京', lat: 32.0603, lon: 118.7969, tz: 'Asia/Shanghai' },
+    { n: '武汉', lat: 30.5928, lon: 114.3055, tz: 'Asia/Shanghai' },
+    { n: '西安', lat: 34.3416, lon: 108.9398, tz: 'Asia/Shanghai' },
+    { n: '重庆', lat: 29.563, lon: 106.5516, tz: 'Asia/Shanghai' },
+    { n: '天津', lat: 39.3434, lon: 117.3616, tz: 'Asia/Shanghai' },
+    { n: '苏州', lat: 31.2989, lon: 120.5853, tz: 'Asia/Shanghai' },
+    { n: '长沙', lat: 28.2282, lon: 112.9388, tz: 'Asia/Shanghai' },
+    { n: '青岛', lat: 36.0671, lon: 120.3826, tz: 'Asia/Shanghai' },
+    { n: '厦门', lat: 24.4798, lon: 118.0894, tz: 'Asia/Shanghai' },
+    { n: '香港', lat: 22.3193, lon: 114.1694, tz: 'Asia/Hong_Kong' },
+    { n: '台北', lat: 25.033, lon: 121.5654, tz: 'Asia/Shanghai' },
+    { n: '东京', lat: 35.6762, lon: 139.6503, tz: 'Asia/Tokyo' },
+    { n: '首尔', lat: 37.5665, lon: 126.978, tz: 'Asia/Seoul' },
+    { n: '新加坡', lat: 1.3521, lon: 103.8198, tz: 'Asia/Singapore' },
+    { n: '曼谷', lat: 13.7563, lon: 100.5018, tz: 'Asia/Bangkok' },
+    { n: '悉尼', lat: -33.8688, lon: 151.2093, tz: 'Australia/Sydney' },
+    { n: '墨尔本', lat: -37.8136, lon: 144.9631, tz: 'Australia/Melbourne' },
+    { n: '伦敦', lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
+    { n: '巴黎', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris' },
+    { n: '柏林', lat: 52.52, lon: 13.405, tz: 'Europe/Berlin' },
+    { n: '罗马', lat: 41.9028, lon: 12.4964, tz: 'Europe/Rome' },
+    { n: '马德里', lat: 40.4168, lon: -3.7038, tz: 'Europe/Madrid' },
+    { n: '莫斯科', lat: 55.7558, lon: 37.6173, tz: 'Europe/Moscow' },
+    { n: '纽约', lat: 40.7128, lon: -74.006, tz: 'America/New_York' },
+    { n: '洛杉矶', lat: 34.0522, lon: -118.2437, tz: 'America/Los_Angeles' },
+    { n: '旧金山', lat: 37.7749, lon: -122.4194, tz: 'America/Los_Angeles' },
+    { n: '西雅图', lat: 47.6062, lon: -122.3321, tz: 'America/Los_Angeles' },
+    { n: '芝加哥', lat: 41.8781, lon: -87.6298, tz: 'America/Chicago' },
+    { n: '多伦多', lat: 43.6532, lon: -79.3832, tz: 'America/Toronto' },
+    { n: '温哥华', lat: 49.2827, lon: -123.1207, tz: 'America/Vancouver' },
+    { n: '墨西哥城', lat: 19.4326, lon: -99.1332, tz: 'America/Mexico_City' },
+    { n: '圣保罗', lat: -23.5505, lon: -46.6333, tz: 'America/Sao_Paulo' },
+    { n: '开罗', lat: 30.0444, lon: 31.2357, tz: 'Africa/Cairo' },
+    { n: '迪拜', lat: 25.2048, lon: 55.2708, tz: 'Asia/Dubai' },
+    { n: '孟买', lat: 19.076, lon: 72.8777, tz: 'Asia/Kolkata' },
+    { n: '奥克兰', lat: -36.8485, lon: 174.7633, tz: 'Pacific/Auckland' },
+    { n: '檀香山', lat: 21.3069, lon: -157.8583, tz: 'Pacific/Honolulu' },
+  ];
 
   var form = document.getElementById('astro-form');
   var statusEl = document.getElementById('a-status');
@@ -63,6 +115,9 @@
   var housesEl = document.getElementById('astro-houses');
   var aspectsEl = document.getElementById('astro-aspects');
   var captionEl = document.getElementById('astro-caption');
+  var cityInput = document.getElementById('a-city');
+  var cityList = document.getElementById('astro-cities');
+  var savedList = document.getElementById('astro-saved-list');
 
   if (!form || !canvas) return;
 
@@ -197,6 +252,26 @@
     });
     g.setLineDash([]);
 
+    //  aspect lines
+    var lonByName = {};
+    (chart.planets || []).forEach(function (p) {
+      lonByName[p.name] = absLon(p);
+    });
+    (chart.aspects || []).forEach(function (a) {
+      if (a.type === 'conjunction') return;
+      var l1 = lonByName[a.a];
+      var l2 = lonByName[a.b];
+      if (l1 == null || l2 == null) return;
+      var p1 = pos(l1, r * 0.5);
+      var p2 = pos(l2, r * 0.5);
+      g.strokeStyle = ASPECT_COLOR[a.type] || 'rgba(143,124,255,0.35)';
+      g.lineWidth = 0.9;
+      g.beginPath();
+      g.moveTo(p1[0], p1[1]);
+      g.lineTo(p2[0], p2[1]);
+      g.stroke();
+    });
+
     //  planets
     var sorted = (chart.planets || []).slice().sort(function (a, b) {
       return absLon(a) - absLon(b);
@@ -264,12 +339,92 @@
     resultEl.hidden = false;
   }
 
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function fmtDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function loadSaved() {
+    if (!savedList) return;
+    api('/v1/charts')
+      .then(function (rows) {
+        if (!rows.length) {
+          savedList.innerHTML = '<div class="astro-saved-empty">还没有保存的星盘</div>';
+          return;
+        }
+        savedList.innerHTML = rows
+          .map(function (r) {
+            return (
+              '<div class="astro-saved-item" data-id="' +
+              r.id +
+              '"><button class="load" type="button">' +
+              esc(r.label) +
+              '</button><span class="date">' +
+              fmtDate(r.created_at) +
+              '</span><button class="del" type="button" title="删除">×</button></div>'
+            );
+          })
+          .join('');
+      })
+      .catch(function () {
+        savedList.innerHTML = '<div class="astro-saved-empty">列表加载失败</div>';
+      });
+  }
+
+  if (savedList) {
+    savedList.addEventListener('click', function (e) {
+      var item = e.target.closest('.astro-saved-item');
+      if (!item) return;
+      var id = item.getAttribute('data-id');
+      if (e.target.classList.contains('del')) {
+        if (!window.confirm('删除这张星盘？')) return;
+        api('/v1/charts/' + id, { method: 'DELETE' }).then(loadSaved);
+        return;
+      }
+      api('/v1/charts/' + id).then(function (chart) {
+        currentId = chart.id;
+        render(chart);
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  if (cityList) {
+    cityList.innerHTML = CITIES.map(function (c) {
+      return '<option value="' + c.n + '">';
+    }).join('');
+  }
+
+  if (cityInput) {
+    cityInput.addEventListener('input', function () {
+      var city = CITIES.filter(function (c) {
+        return c.n === cityInput.value;
+      })[0];
+      if (!city) return;
+      document.getElementById('a-lat').value = city.lat;
+      document.getElementById('a-lon').value = city.lon;
+      var tz = document.getElementById('a-tz');
+      var opt = Array.prototype.filter.call(tz.options, function (o) {
+        return o.value === city.tz;
+      })[0];
+      if (opt) tz.value = city.tz;
+    });
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     submitBtn.disabled = true;
     setStatus('计算中…');
 
     var body = {
+      label: (cityInput && cityInput.value.trim()) || '未命名星盘',
       birth_date: document.getElementById('a-date').value,
       birth_time: document.getElementById('a-time').value,
       timezone: document.getElementById('a-tz').value,
@@ -281,6 +436,7 @@
       .then(function (chart) {
         currentId = chart.id;
         render(chart);
+        loadSaved();
         setStatus('');
         resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       })
@@ -305,6 +461,8 @@
         setStatus(err.message || '删除失败');
       });
   });
+
+  loadSaved();
 
   window.addEventListener('resize', function () {
     if (lastChart && !resultEl.hidden) drawWheel(lastChart);

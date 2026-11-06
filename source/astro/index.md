@@ -30,8 +30,10 @@ rightbar: false
             <option value="Australia/Sydney">Australia/Sydney</option>
           </select>
         </label>
-        <label>纬度<input id="a-lat" type="number" step="0.01" min="-90" max="90" value="31.23" required></label>
-        <label>经度<input id="a-lon" type="number" step="0.01" min="-180" max="180" value="121.47" required></label>
+        <label class="astro-city">城市<input id="a-city" list="astro-cities" placeholder="搜索城市，自动填经纬度"></label>
+        <datalist id="astro-cities"></datalist>
+        <label>纬度<input id="a-lat" type="number" step="any" min="-90" max="90" value="31.23" required></label>
+        <label>经度<input id="a-lon" type="number" step="any" min="-180" max="180" value="121.47" required></label>
       </div>
       <div class="astro-actions">
         <button type="submit" id="a-submit">生成星盘</button>
@@ -52,6 +54,11 @@ rightbar: false
       <div class="astro-panel"><h3>相位</h3><ul id="astro-aspects"></ul></div>
     </div>
     <button type="button" id="astro-delete" class="astro-delete">删除这张星盘</button>
+  </section>
+
+  <section class="astro-saved" id="astro-saved">
+    <h3>我的星盘</h3>
+    <div id="astro-saved-list" class="astro-saved-list"></div>
   </section>
 </div>
 
