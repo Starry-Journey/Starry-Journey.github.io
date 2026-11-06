@@ -11,6 +11,7 @@ on:
 
 jobs:
   build:
+    name: CI / build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +49,7 @@ jobs:
         run: npm run test:lighthouse
 
   pr-title:
+    name: CI / pr-title
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
