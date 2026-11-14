@@ -67,6 +67,18 @@ rightbar: false
     <p class="astro-note">AI 解读仅供娱乐与自我探索，不构成任何决策建议。</p>
   </section>
 
+  <section class="astro-tools" id="astro-tools">
+    <button type="button" id="astro-transit-btn">看今日行运</button>
+    <span class="astro-tools-split">或</span>
+    <select id="astro-partner"><option value="">选另一张盘合盘…</option></select>
+    <button type="button" id="astro-synastry-btn">开始合盘</button>
+  </section>
+
+  <section class="astro-extra" id="astro-extra" hidden>
+    <h3 id="astro-extra-title"></h3>
+    <div id="astro-extra-body"></div>
+  </section>
+
   <section class="astro-saved" id="astro-saved">
     <h3>我的星盘</h3>
     <div id="astro-saved-list" class="astro-saved-list"></div>
