@@ -23,7 +23,7 @@ jobs:
 
       - name: Create PR and merge after checks
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.NEWS_PAT || secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_REF_NAME}"
           TITLE="chore(news): daily digest ${BRANCH#news-}"
