@@ -1,0 +1,34 @@
+name: News Auto Merge
+
+on:
+  push:
+    branches:
+      - 'news-*'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: news-automerge-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create PR and merge after checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          TITLE="chore(news): daily digest ${BRANCH#news-}"
+          if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "Automated daily digest. Triggered by news-radar."
+          fi
+          gh pr checks "$BRANCH" --watch --interval 15
+          gh pr merge "$BRANCH" --squash --delete-branch
