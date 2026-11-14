@@ -30,5 +30,13 @@ jobs:
           if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
             gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "Automated daily digest. Triggered by news-radar."
           fi
-          gh pr checks "$BRANCH" --watch --interval 15
+          # 轮询 PR 合并状态，避免依赖 Checks 权限
+          for i in $(seq 1 40); do
+            STATE=$(gh pr view "$BRANCH" --json mergeStateStatus --jq .mergeStateStatus)
+            echo "mergeStateStatus=$STATE"
+            if [ "$STATE" = "CLEAN" ]; then
+              break
+            fi
+            sleep 20
+          done
           gh pr merge "$BRANCH" --squash --delete-branch
