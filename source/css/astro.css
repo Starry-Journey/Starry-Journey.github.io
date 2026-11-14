@@ -197,7 +197,10 @@
     padding: 0.9rem;
   }
   .astro-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+  }
+  .astro-actions {
+    flex-wrap: wrap;
   }
 }
 
