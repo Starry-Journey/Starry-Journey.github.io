@@ -4,7 +4,8 @@ updates:
     directory: '/'
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    rebase-strategy: auto
     ignore:
       - dependency-name: 'hexo'
         update-types: ['version-update:semver-major']
@@ -22,9 +23,17 @@ updates:
           - '@eslint/*'
           - 'prettier'
           - '@playwright/*'
+          - '@lhci/*'
+      commitlint:
+        patterns:
+          - '@commitlint/*'
 
   - package-ecosystem: github-actions
     directory: '/'
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - '*'
