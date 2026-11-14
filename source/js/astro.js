@@ -521,7 +521,7 @@
     var city = (cityInput && cityInput.value.trim()) || '';
     var birthDate = document.getElementById('a-date').value;
     var body = {
-      label: city ? city + ' ' + birthDate.slice(5) : '未命名星盘',
+      label: city ? city + ' ' + birthDate : '未命名星盘',
       birth_date: birthDate,
       birth_time: document.getElementById('a-time').value,
       timezone: document.getElementById('a-tz').value,
@@ -948,8 +948,16 @@
               );
             })
             .join('');
+          var when = new Date(data.when);
+          var whenText = isNaN(when.getTime())
+            ? String(data.when).slice(0, 10)
+            : when.getFullYear() +
+              '-' +
+              String(when.getMonth() + 1).padStart(2, '0') +
+              '-' +
+              String(when.getDate()).padStart(2, '0');
           showExtra(
-            '今日行运 · ' + String(data.when).slice(0, 10),
+            '今日行运 · ' + whenText,
             '<div>' +
               data.summary +
               '</div><div class="astro-extra-list">' +
