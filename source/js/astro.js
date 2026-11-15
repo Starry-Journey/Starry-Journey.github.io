@@ -142,6 +142,12 @@
   var readingBtn = document.getElementById('astro-reading-btn');
   var downloadBtn = document.getElementById('astro-download');
   var elementsEl = document.getElementById('astro-elements');
+  var transitBtn = document.getElementById('astro-transit-btn');
+  var partnerSelect = document.getElementById('astro-partner');
+  var synastryBtn = document.getElementById('astro-synastry-btn');
+  var extraEl = document.getElementById('astro-extra');
+  var extraTitle = document.getElementById('astro-extra-title');
+  var extraBody = document.getElementById('astro-extra-body');
   var tip = document.createElement('div');
   tip.className = 'astro-tip';
   if (canvas && canvas.parentElement) canvas.parentElement.appendChild(tip);
@@ -151,6 +157,7 @@
   var token = localStorage.getItem(TOKEN_KEY) || '';
   var currentId = null;
   var lastChart = null;
+  var lastTransits = null;
 
   function setStatus(msg) {
     statusEl.textContent = msg || '';
@@ -216,7 +223,7 @@
     return (SIGN_CN[pos.sign] || pos.sign) + ' ' + Number(pos.degree || 0).toFixed(1) + '°';
   }
 
-  function drawWheel(chart) {
+  function drawWheel(chart, transits) {
     var size = Math.max(280, Math.min((canvas.parentElement.clientWidth || 520) - 32, 560));
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = size * dpr;
@@ -325,6 +332,15 @@
     g.textAlign = 'center';
     g.fillText('ASC', cx, cy - 8);
 
+    if (transits && transits.length) {
+      g.fillStyle = 'rgba(122,215,255,0.9)';
+      g.font = '12px serif';
+      transits.forEach(function (p) {
+        var pt = pos(absLon(p), R * 0.96);
+        g.fillText(GLYPH[p.name] || '•', pt[0], pt[1]);
+      });
+    }
+
     captionEl.textContent =
       '上升 ' +
       fmt(chart.houses[0] || chart.ascendant) +
@@ -381,6 +397,7 @@
 
   function render(chart) {
     lastChart = chart;
+    lastTransits = null;
     drawWheel(chart);
     renderList(
       planetsEl,
@@ -427,6 +444,15 @@
         if (!rows.length) {
           savedList.innerHTML = '<div class="astro-saved-empty">还没有保存的星盘</div>';
           return;
+        }
+        if (partnerSelect) {
+          partnerSelect.innerHTML =
+            '<option value="">选另一张盘合盘…</option>' +
+            rows
+              .map(function (r) {
+                return '<option value="' + r.id + '">' + esc(r.label) + '</option>';
+              })
+              .join('');
         }
         savedList.innerHTML = rows
           .map(function (r) {
@@ -492,9 +518,11 @@
     submitBtn.disabled = true;
     setStatus('计算中…');
 
+    var city = (cityInput && cityInput.value.trim()) || '';
+    var birthDate = document.getElementById('a-date').value;
     var body = {
-      label: (cityInput && cityInput.value.trim()) || '未命名星盘',
-      birth_date: document.getElementById('a-date').value,
+      label: city ? city + ' ' + birthDate : '未命名星盘',
+      birth_date: birthDate,
       birth_time: document.getElementById('a-time').value,
       timezone: document.getElementById('a-tz').value,
       latitude: Number(document.getElementById('a-lat').value),
@@ -676,6 +704,122 @@
           });
         }
 
+        function showExtra(title, html) {
+          if (!extraEl) return;
+          extraTitle.textContent = title;
+          extraBody.innerHTML = html;
+          extraEl.hidden = false;
+          extraEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        if (transitBtn) {
+          transitBtn.addEventListener('click', function () {
+            if (!currentId) return;
+            transitBtn.disabled = true;
+            api('/v1/charts/' + currentId + '/transits', { method: 'POST', body: '{}' })
+              .then(function (data) {
+                lastTransits = data.planets;
+                drawWheel(lastChart, lastTransits);
+                var rows = (data.planets || [])
+                  .map(function (p) {
+                    return (
+                      '<span><b>' +
+                      (PLANET_CN[p.name] || p.name) +
+                      '</b><span class="dim">' +
+                      fmt(p) +
+                      '</span></span>'
+                    );
+                  })
+                  .join('');
+                var aspects = (data.aspects || [])
+                  .slice(0, 12)
+                  .map(function (a) {
+                    return (
+                      '<span><b>' +
+                      (PLANET_CN[a.a] || a.a) +
+                      ' → ' +
+                      (PLANET_CN[a.b] || a.b) +
+                      '</b><span class="dim">' +
+                      (ASPECT_CN[a.type] || a.type) +
+                      ' ' +
+                      a.orb +
+                      '°</span></span>'
+                    );
+                  })
+                  .join('');
+                showExtra(
+                  '今日行运 · ' + String(data.when).slice(0, 10),
+                  '<div>' +
+                    data.summary +
+                    '</div><div class="astro-extra-list">' +
+                    rows +
+                    '</div><div class="astro-extra-list">' +
+                    aspects +
+                    '</div>'
+                );
+              })
+              .catch(function (err) {
+                showExtra('行运暂时不可用', '<div>' + esc(err.message) + '</div>');
+              })
+              .then(function () {
+                transitBtn.disabled = false;
+              });
+          });
+        }
+
+        if (synastryBtn) {
+          synastryBtn.addEventListener('click', function () {
+            if (!currentId || !partnerSelect || !partnerSelect.value) {
+              showExtra('合盘', '<div>先在左侧“我的星盘”里保存至少两张盘，再选择另一张。</div>');
+              return;
+            }
+            var partnerId = Number(partnerSelect.value);
+            if (partnerId === currentId) {
+              showExtra('合盘', '<div>请选择另一张星盘。</div>');
+              return;
+            }
+            synastryBtn.disabled = true;
+            api('/v1/charts/synastry', {
+              method: 'POST',
+              body: JSON.stringify({ a_id: currentId, b_id: partnerId }),
+            })
+              .then(function (data) {
+                var aspects = (data.aspects || [])
+                  .slice(0, 14)
+                  .map(function (a) {
+                    return (
+                      '<span><b>' +
+                      (PLANET_CN[a.a] || a.a) +
+                      ' × ' +
+                      (PLANET_CN[a.b] || a.b) +
+                      '</b><span class="dim">' +
+                      (ASPECT_CN[a.type] || a.type) +
+                      ' ' +
+                      a.orb +
+                      '°</span></span>'
+                    );
+                  })
+                  .join('');
+                showExtra(
+                  '合盘 · ' + data.a_label + ' × ' + data.b_label,
+                  '<div class="astro-score">和谐度 ' +
+                    data.score +
+                    ' / 100</div><div>' +
+                    data.summary +
+                    '</div><div class="astro-extra-list">' +
+                    aspects +
+                    '</div>'
+                );
+              })
+              .catch(function (err) {
+                showExtra('合盘暂时不可用', '<div>' + esc(err.message) + '</div>');
+              })
+              .then(function () {
+                synastryBtn.disabled = false;
+              });
+          });
+        }
+
         loadSaved();
         setStatus('');
         resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -758,6 +902,130 @@
     });
     canvas.addEventListener('mouseleave', function () {
       tip.classList.remove('show');
+    });
+  }
+
+  function showExtra(title, html) {
+    if (!extraEl) return;
+    extraTitle.textContent = title;
+    extraBody.innerHTML = html;
+    extraEl.hidden = false;
+    extraEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  if (transitBtn) {
+    transitBtn.addEventListener('click', function () {
+      if (!currentId) return;
+      transitBtn.disabled = true;
+      api('/v1/charts/' + currentId + '/transits', { method: 'POST', body: '{}' })
+        .then(function (data) {
+          lastTransits = data.planets;
+          drawWheel(lastChart, lastTransits);
+          var rows = (data.planets || [])
+            .map(function (p) {
+              return (
+                '<span><b>' +
+                (PLANET_CN[p.name] || p.name) +
+                '</b><span class="dim">' +
+                fmt(p) +
+                '</span></span>'
+              );
+            })
+            .join('');
+          var aspects = (data.aspects || [])
+            .slice(0, 12)
+            .map(function (a) {
+              return (
+                '<span><b>' +
+                (PLANET_CN[a.a] || a.a) +
+                ' → ' +
+                (PLANET_CN[a.b] || a.b) +
+                '</b><span class="dim">' +
+                (ASPECT_CN[a.type] || a.type) +
+                ' ' +
+                a.orb +
+                '°</span></span>'
+              );
+            })
+            .join('');
+          var when = new Date(data.when);
+          var whenText = isNaN(when.getTime())
+            ? String(data.when).slice(0, 10)
+            : when.getFullYear() +
+              '-' +
+              String(when.getMonth() + 1).padStart(2, '0') +
+              '-' +
+              String(when.getDate()).padStart(2, '0');
+          showExtra(
+            '今日行运 · ' + whenText,
+            '<div>' +
+              data.summary +
+              '</div><div class="astro-extra-list">' +
+              rows +
+              '</div><div class="astro-extra-list">' +
+              aspects +
+              '</div>'
+          );
+        })
+        .catch(function (err) {
+          showExtra('行运暂时不可用', '<div>' + esc(err.message) + '</div>');
+        })
+        .then(function () {
+          transitBtn.disabled = false;
+        });
+    });
+  }
+
+  if (synastryBtn) {
+    synastryBtn.addEventListener('click', function () {
+      if (!currentId || !partnerSelect || !partnerSelect.value) {
+        showExtra('合盘', '<div>先在左侧“我的星盘”里保存至少两张盘，再选择另一张。</div>');
+        return;
+      }
+      var partnerId = Number(partnerSelect.value);
+      if (partnerId === currentId) {
+        showExtra('合盘', '<div>请选择另一张星盘。</div>');
+        return;
+      }
+      synastryBtn.disabled = true;
+      api('/v1/charts/synastry', {
+        method: 'POST',
+        body: JSON.stringify({ a_id: currentId, b_id: partnerId }),
+      })
+        .then(function (data) {
+          var aspects = (data.aspects || [])
+            .slice(0, 14)
+            .map(function (a) {
+              return (
+                '<span><b>' +
+                (PLANET_CN[a.a] || a.a) +
+                ' × ' +
+                (PLANET_CN[a.b] || a.b) +
+                '</b><span class="dim">' +
+                (ASPECT_CN[a.type] || a.type) +
+                ' ' +
+                a.orb +
+                '°</span></span>'
+              );
+            })
+            .join('');
+          showExtra(
+            '合盘 · ' + data.a_label + ' × ' + data.b_label,
+            '<div class="astro-score">和谐度 ' +
+              data.score +
+              ' / 100</div><div>' +
+              data.summary +
+              '</div><div class="astro-extra-list">' +
+              aspects +
+              '</div>'
+          );
+        })
+        .catch(function (err) {
+          showExtra('合盘暂时不可用', '<div>' + esc(err.message) + '</div>');
+        })
+        .then(function () {
+          synastryBtn.disabled = false;
+        });
     });
   }
 
