@@ -1,17 +1,24 @@
-/* 太阳系 2D 俯视图：Canvas + 开普勒轨道，无外部依赖 */
+/* 太阳系三维视图：Three.js（本地 vendor）+ 开普勒轨道根数 */
 (function () {
   'use strict';
 
-  var canvas = document.getElementById('solar-canvas');
+  var canvas = document.getElementById('solar-canvas3d');
   if (!canvas) return;
-  var ctx = canvas.getContext('2d');
   var stage = canvas.parentElement;
+  var appEl = document.getElementById('solar-app');
+  var labelsBox = document.getElementById('solar-labels');
   var yearEl = document.getElementById('solar-year');
   var slider = document.getElementById('solar-slider');
   var playBtn = document.getElementById('solar-play');
   var speedSel = document.getElementById('solar-speed');
   var resetBtn = document.getElementById('solar-reset');
+  var missionsToggle = document.getElementById('solar-missions');
   var infoEl = document.getElementById('solar-info');
+  var loadingEl = document.getElementById('solar-loading');
+  var badgeEl = document.querySelector('#solar-app .solar-badge span');
+
+  if (appEl) appEl.classList.add('mode-3d');
+  if (badgeEl) badgeEl.textContent = '年 · 三维视角';
 
   var DEG = Math.PI / 180;
   var MIN_YEAR = 1957,
@@ -19,11 +26,10 @@
   var year = MAX_YEAR;
   var playing = false;
   var speed = 0.5;
-  var zoom = 1;
-  var panX = 0,
-    panY = 0;
   var selected = null;
-  var stars = [];
+  var REDUCED = !!(
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 
   // a: AU, e: 偏心率, P: 公转周期(年), peri: 近日点经度, L0: J2000 平黄经
   var PLANETS = [
@@ -570,17 +576,9 @@
   ];
 
   var showMissions = true;
-  var anim = null;
 
   function norm360(x) {
     return ((x % 360) + 360) % 360;
-  }
-  function compress(rAU) {
-    return Math.pow(rAU, 0.6);
-  }
-  var MAX_R = compress(PLUTO_MAX());
-  function PLUTO_MAX() {
-    return 39.482 * (1 + 0.2488);
   }
 
   function orbitalState(p, tYears) {
@@ -595,823 +593,8 @@
     return { r: r, ang: nu + p.peri * DEG };
   }
 
-  function posAtExp(p, tYears, exp) {
-    var st = orbitalState(p, tYears);
-    var R = Math.pow(st.r, exp);
-    return { r: st.r, x: R * Math.cos(st.ang), y: R * Math.sin(st.ang) };
-  }
-
-  function positionAt(p, tYears) {
-    return posAtExp(p, tYears, 0.6);
-  }
-
-  function orbitPointsExp(p, exp) {
-    var pts = [];
-    for (var i = 0; i <= 180; i++) {
-      var E = (i / 180) * Math.PI * 2;
-      var r = p.a * (1 - p.e * Math.cos(E));
-      var nu =
-        2 * Math.atan2(Math.sqrt(1 + p.e) * Math.sin(E / 2), Math.sqrt(1 - p.e) * Math.cos(E / 2));
-      var ang = nu + p.peri * DEG;
-      var R = Math.pow(r, exp);
-      pts.push({ x: R * Math.cos(ang), y: R * Math.sin(ang) });
-    }
-    return pts;
-  }
-  PLANETS.forEach(function (p) {
-    p.orbit = orbitPointsExp(p, 0.6);
-    p.orbitInset = orbitPointsExp(p, 0.55);
-  });
-
-  var dpr = 1,
-    W = 0,
-    H = 0,
-    baseScale = 1;
-
-  function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var rect = stage.getBoundingClientRect();
-    W = rect.width;
-    H = rect.height;
-    canvas.width = Math.floor(W * dpr);
-    canvas.height = Math.floor(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    baseScale = (Math.min(W, H) * 0.43) / MAX_R;
-    stars = [];
-    var n = Math.floor((W * H) / 12000);
-    for (var i = 0; i < n; i++) {
-      stars.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        r: Math.random() * 1.1 + 0.2,
-        a: Math.random() * 0.5 + 0.2,
-      });
-    }
-    draw();
-  }
-
-  function screen(x, y) {
-    return { x: W / 2 + x * baseScale * zoom + panX, y: H / 2 + y * baseScale * zoom + panY };
-  }
-
-  function planetScreen(p, tYears) {
-    var pos = positionAt(p, tYears);
-    return screen(pos.x, pos.y);
-  }
-
-  function draw() {
-    var tYears = year - 2000;
-    ctx.clearRect(0, 0, W, H);
-
-    // 背景星点
-    for (var s = 0; s < stars.length; s++) {
-      var st = stars[s];
-      ctx.beginPath();
-      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(220,230,255,' + st.a.toFixed(2) + ')';
-      ctx.fill();
-    }
-
-    // 轨道
-    PLANETS.forEach(function (p) {
-      ctx.beginPath();
-      for (var i = 0; i < p.orbit.length; i++) {
-        var q = screen(p.orbit[i].x, p.orbit[i].y);
-        if (i === 0) ctx.moveTo(q.x, q.y);
-        else ctx.lineTo(q.x, q.y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = hexA(p.color, selected === p.id ? 0.55 : 0.18);
-      ctx.lineWidth = selected === p.id ? 1.4 : 1;
-      ctx.stroke();
-    });
-
-    // 太阳
-    var sun = screen(0, 0);
-    var sunR = 15 * Math.min(1.6, Math.max(0.9, zoom * 0.8));
-    var g = ctx.createRadialGradient(sun.x, sun.y, 1, sun.x, sun.y, sunR * 3.2);
-    g.addColorStop(0, 'rgba(255,244,190,1)');
-    g.addColorStop(0.25, 'rgba(255,196,92,0.95)');
-    g.addColorStop(0.55, 'rgba(255,150,50,0.28)');
-    g.addColorStop(1, 'rgba(255,150,50,0)');
-    ctx.beginPath();
-    ctx.arc(sun.x, sun.y, sunR * 3.2, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(sun.x, sun.y, sunR, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffe9a8';
-    ctx.fill();
-
-    // 行星
-    var placed = [];
-    PLANETS.forEach(function (p) {
-      var q = planetScreen(p, tYears);
-      var r = Math.max(3.2, p.size * Math.min(2.2, Math.max(0.8, Math.pow(zoom, 0.35))));
-      if (p.id === 'saturn') drawRing(q, r, p.color);
-      var pg = ctx.createRadialGradient(q.x - r * 0.35, q.y - r * 0.35, r * 0.2, q.x, q.y, r);
-      pg.addColorStop(0, lighten(p.color, 0.45));
-      pg.addColorStop(1, p.color);
-      ctx.beginPath();
-      ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = pg;
-      ctx.fill();
-      if (selected === p.id) {
-        ctx.beginPath();
-        ctx.arc(q.x, q.y, r + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(159,192,255,0.9)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-
-      // 内圈行星在默认缩放下不画标签（看右下放大镜），放大后再显示
-      if (p.a < 2 && zoom < 1.6 && selected !== p.id) return;
-
-      // 标签避让：优先右侧，冲突则换到上方/下方，再不行就省略
-      ctx.font = '11px system-ui, "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'center';
-      var label = p.zh;
-      var tw = ctx.measureText(label).width + 6;
-      var candidates = [
-        { x: q.x, y: q.y + r + 13 },
-        { x: q.x, y: q.y - r - 6 },
-        { x: q.x + r + tw / 2 + 4, y: q.y + 4 },
-        { x: q.x - r - tw / 2 - 4, y: q.y + 4 },
-      ];
-      for (var c = 0; c < candidates.length; c++) {
-        var box = { x: candidates[c].x - tw / 2, y: candidates[c].y - 10, w: tw, h: 13 };
-        var clash = placed.some(function (b) {
-          return (
-            box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y
-          );
-        });
-        if (!clash || selected === p.id) {
-          placed.push(box);
-          ctx.fillStyle = selected === p.id ? '#cfe0ff' : 'rgba(210,222,255,0.72)';
-          ctx.fillText(label, candidates[c].x, candidates[c].y);
-          break;
-        }
-      }
-    });
-
-    if (showMissions) drawMissions(tYears);
-    drawInset(tYears);
-  }
-
-  function missionScreen(m, tYears) {
-    var yearNow = 2000 + tYears;
-    if (yearNow < m.year) return null;
-    if (m.end && yearNow > m.end) return null;
-    if (m.kind === 'planet') {
-      var p = PLANETS.filter(function (x) {
-        return x.id === m.planet;
-      })[0];
-      var q = planetScreen(p, tYears);
-      return { x: q.x + 10, y: q.y - 9 };
-    }
-    if (m.kind === 'deep') {
-      var d = m.dist(yearNow);
-      if (d <= 0) return null;
-      var R = Math.pow(d, 0.45);
-      return screen(R * Math.cos(m.angle * DEG), R * Math.sin(m.angle * DEG));
-    }
-    if (m.kind === 'l2') {
-      var e = planetScreen(PLANETS[2], tYears);
-      var sun = screen(0, 0);
-      var dx = e.x - sun.x,
-        dy = e.y - sun.y;
-      var len = Math.hypot(dx, dy) || 1;
-      return { x: e.x + (dx / len) * 7, y: e.y + (dy / len) * 7 };
-    }
-    if (m.kind === 'sun') {
-      var rr = Math.pow(0.32, 0.6);
-      var a = (yearNow - 2018) * 55 * DEG;
-      return screen(rr * Math.cos(a), rr * Math.sin(a));
-    }
-    return null;
-  }
-
-  function drawMissions(tYears) {
-    MISSIONS.forEach(function (m) {
-      var q = missionScreen(m, tYears);
-      if (!q) return;
-      var active = selected === m.id;
-      ctx.save();
-      ctx.translate(q.x, q.y);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = active ? '#fff' : m.color;
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 0.6;
-      ctx.fillRect(-2.6, -2.6, 5.2, 5.2);
-      ctx.strokeRect(-2.6, -2.6, 5.2, 5.2);
-      ctx.restore();
-      if (m.kind === 'deep' || active) {
-        ctx.font = '9px system-ui, "Microsoft YaHei", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = active ? '#ffe9a8' : 'rgba(255,215,120,0.75)';
-        ctx.fillText(m.zh, q.x + 6, q.y + 3);
-      }
-      if (active) {
-        ctx.beginPath();
-        ctx.arc(q.x, q.y, 8, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,224,138,0.9)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      }
-    });
-  }
-
-  function showMission(m, tYears) {
-    var yearNow = 2000 + tYears;
-    var rows = '<dt>发射</dt><dd>' + m.year + ' 年</dd>';
-    if (m.kind === 'deep') {
-      rows += '<dt>日心距</dt><dd>' + m.dist(yearNow).toFixed(1) + ' AU</dd>';
-    } else if (m.kind === 'l2') {
-      rows += '<dt>位置</dt><dd>日地 L2 点（约 1.01 AU）</dd>';
-    } else if (m.kind === 'sun') {
-      rows += '<dt>轨道</dt><dd>近日点约 0.05 AU</dd>';
-    } else {
-      var p = PLANETS.filter(function (x) {
-        return x.id === m.planet;
-      })[0];
-      rows += '<dt>所在天体</dt><dd>' + p.zh + '</dd>';
-    }
-    if (m.agency) rows += '<dt>机构</dt><dd>' + m.agency + '</dd>';
-    if (m.status) rows += '<dt>状态</dt><dd>' + m.status + '</dd>';
-    if (m.target) rows += '<dt>目标</dt><dd>' + m.target + '</dd>';
-    infoEl.hidden = false;
-    infoEl.innerHTML =
-      '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
-      '<h3>' +
-      m.zh +
-      ' <small>' +
-      m.en +
-      '</small></h3>' +
-      '<dl>' +
-      rows +
-      '</dl>' +
-      '<p>' +
-      m.note +
-      '</p>' +
-      (m.story ? '<p class="solar-info-story">' + m.story + '</p>' : '');
-    infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
-      infoEl.hidden = true;
-      selected = null;
-      draw();
-    });
-  }
-
-  // 内太阳系放大镜
-  function drawInset(tYears) {
-    var R = Math.min(104, W * 0.2);
-    var cx = R + 16,
-      cy = H - R - 16;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(6, 10, 22, 0.88)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(120, 140, 200, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.clip();
-
-    var maxR = Math.pow(1.666, 0.55);
-    var scale = (R - 18) / maxR;
-    var inner = PLANETS.slice(0, 4);
-    inner.forEach(function (p) {
-      ctx.beginPath();
-      for (var i = 0; i < p.orbitInset.length; i++) {
-        var q = p.orbitInset[i];
-        var x = cx + q.x * scale,
-          y = cy + q.y * scale;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = hexA(p.color, 0.28);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    });
-    // 太阳
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffe9a8';
-    ctx.fill();
-    var insetLabels = [];
-    inner.forEach(function (p) {
-      var st = orbitalState(p, tYears);
-      var Rr = Math.pow(st.r, 0.55) * scale;
-      var x = cx + Rr * Math.cos(st.ang),
-        y = cy + Rr * Math.sin(st.ang);
-      var rr = Math.max(2.2, p.size * 0.55);
-      ctx.beginPath();
-      ctx.arc(x, y, rr, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-      insetLabels.push({ p: p, x: x, y: y, r: rr });
-    });
-    ctx.restore();
-
-    ctx.font = '9px system-ui, "Microsoft YaHei", sans-serif';
-    ctx.textAlign = 'center';
-    insetLabels.forEach(function (l) {
-      ctx.fillStyle = 'rgba(210,222,255,0.85)';
-      var ly = l.p.id === 'mars' ? l.y - l.r - 5 : l.y + l.r + 10;
-      ctx.fillText(l.p.zh, l.x, ly);
-    });
-    ctx.font = '10px system-ui, "Microsoft YaHei", sans-serif';
-    ctx.fillStyle = 'rgba(150,165,200,0.75)';
-    ctx.fillText('内太阳系（放大）', cx, cy - R - 8);
-  }
-
-  function drawRing(q, r, color) {
-    ctx.save();
-    ctx.translate(q.x, q.y);
-    ctx.rotate(-0.35);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 2.1, r * 0.7, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = hexA(lighten(color, 0.25), 0.75);
-    ctx.lineWidth = Math.max(1, r * 0.35);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function hexA(hex, a) {
-    var c = hex.replace('#', '');
-    if (c.length === 3)
-      c = c
-        .split('')
-        .map(function (x) {
-          return x + x;
-        })
-        .join('');
-    var n = parseInt(c, 16);
-    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
-  }
-
-  function lighten(hex, k) {
-    var c = hex.replace('#', '');
-    if (c.length === 3)
-      c = c
-        .split('')
-        .map(function (x) {
-          return x + x;
-        })
-        .join('');
-    var n = parseInt(c, 16);
-    var r = Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * k);
-    var g = Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * k);
-    var b = Math.round((n & 255) + (255 - (n & 255)) * k);
-    return 'rgb(' + r + ',' + g + ',' + b + ')';
-  }
-
-  // ---------- 交互 ----------
-  var pointers = {};
-  var dragging = false,
-    moved = false,
-    lastX = 0,
-    lastY = 0,
-    pinchDist = 0;
-
-  canvas.addEventListener('pointerdown', function (e) {
-    canvas.setPointerCapture(e.pointerId);
-    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if (Object.keys(pointers).length === 1) {
-      dragging = true;
-      moved = false;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    } else if (Object.keys(pointers).length === 2) {
-      var pts = Object.values(pointers);
-      pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    }
-  });
-
-  canvas.addEventListener('pointermove', function (e) {
-    if (!pointers[e.pointerId]) return;
-    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-    var ids = Object.keys(pointers);
-    if (ids.length === 2) {
-      var pts = Object.values(pointers);
-      var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-      if (pinchDist > 0) {
-        zoom = clamp((zoom * d) / pinchDist, 0.6, 10);
-        pinchDist = d;
-        draw();
-      }
-      return;
-    }
-    if (!dragging) return;
-    var dx = e.clientX - lastX,
-      dy = e.clientY - lastY;
-    if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
-    panX += dx;
-    panY += dy;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    draw();
-  });
-
-  function endPointer(e) {
-    delete pointers[e.pointerId];
-    if (Object.keys(pointers).length === 0) {
-      if (dragging && !moved) pick(e.clientX, e.clientY);
-      dragging = false;
-      pinchDist = 0;
-    }
-  }
-  canvas.addEventListener('pointerup', endPointer);
-  canvas.addEventListener('pointercancel', endPointer);
-
-  canvas.addEventListener(
-    'wheel',
-    function (e) {
-      e.preventDefault();
-      var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      zoomAt(e.clientX, e.clientY, factor);
-    },
-    { passive: false }
-  );
-
-  function zoomAt(cx, cy, factor) {
-    var rect = canvas.getBoundingClientRect();
-    var px = cx - rect.left,
-      py = cy - rect.top;
-    var wx = (px - W / 2 - panX) / (baseScale * zoom);
-    var wy = (py - H / 2 - panY) / (baseScale * zoom);
-    zoom = clamp(zoom * factor, 0.6, 10);
-    panX = px - W / 2 - wx * baseScale * zoom;
-    panY = py - H / 2 - wy * baseScale * zoom;
-    draw();
-  }
-
-  function pick(cx, cy) {
-    var rect = canvas.getBoundingClientRect();
-    var px = cx - rect.left,
-      py = cy - rect.top;
-    var tYears = year - 2000;
-
-    if (showMissions) {
-      var bestM = null,
-        bestMD = 12;
-      MISSIONS.forEach(function (m) {
-        var q = missionScreen(m, tYears);
-        if (!q) return;
-        var d = Math.hypot(q.x - px, q.y - py);
-        if (d < bestMD) {
-          bestMD = d;
-          bestM = m;
-        }
-      });
-      if (bestM) {
-        selected = bestM.id;
-        showMission(bestM, tYears);
-        draw();
-        return;
-      }
-    }
-
-    var best = null,
-      bestD = 18;
-    PLANETS.forEach(function (p) {
-      var q = planetScreen(p, tYears);
-      var d = Math.hypot(q.x - px, q.y - py);
-      if (d < bestD) {
-        bestD = d;
-        best = p;
-      }
-    });
-    if (best) {
-      selected = best.id;
-      showInfo(best);
-      zoomToPlanet(best, tYears);
-    } else {
-      selected = null;
-      infoEl.hidden = true;
-    }
-    draw();
-  }
-
-  function showInfo(p) {
-    infoEl.hidden = false;
-    infoEl.innerHTML =
-      '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
-      '<h3>' +
-      p.zh +
-      ' <small>' +
-      p.en +
-      '</small></h3>' +
-      '<dl>' +
-      '<dt>直径</dt><dd>' +
-      p.diameter +
-      '</dd>' +
-      '<dt>公转周期</dt><dd>' +
-      fmtPeriod(p.P) +
-      '</dd>' +
-      '<dt>自转周期</dt><dd>' +
-      p.day +
-      '</dd>' +
-      '<dt>轨道半长轴</dt><dd>' +
-      p.a.toFixed(3) +
-      ' AU</dd>' +
-      '<dt>偏心率</dt><dd>' +
-      p.e.toFixed(4) +
-      '</dd>' +
-      '</dl>' +
-      '<p>' +
-      p.fact +
-      '</p>';
-    infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
-      infoEl.hidden = true;
-      selected = null;
-      draw();
-    });
-  }
-
-  function fmtPeriod(y) {
-    if (y < 1) return (y * 365.25).toFixed(1) + ' 天';
-    return y.toFixed(2) + ' 年';
-  }
-
-  function clamp(v, a, b) {
-    return Math.max(a, Math.min(b, v));
-  }
-
-  function zoomToPlanet(p, tYears) {
-    var pos = positionAt(p, tYears);
-    var targetZoom = Math.max(zoom, 4.2);
-    var tx = -pos.x * baseScale * targetZoom;
-    var ty = -pos.y * baseScale * targetZoom;
-    anim = {
-      start: performance.now(),
-      dur: 650,
-      z0: zoom,
-      x0: panX,
-      y0: panY,
-      z1: targetZoom,
-      x1: tx,
-      y1: ty,
-    };
-    requestAnimationFrame(stepAnim);
-  }
-
-  function stepAnim(ts) {
-    if (!anim) return;
-    var k = clamp((ts - anim.start) / anim.dur, 0, 1);
-    var e = 1 - Math.pow(1 - k, 3);
-    zoom = anim.z0 + (anim.z1 - anim.z0) * e;
-    panX = anim.x0 + (anim.x1 - anim.x0) * e;
-    panY = anim.y0 + (anim.y1 - anim.y0) * e;
-    draw();
-    if (k < 1) requestAnimationFrame(stepAnim);
-    else anim = null;
-  }
-
-  function flyTo3D(targetPos, dist) {
-    if (!T3) return;
-    var dir = T3.camera.position.clone().sub(T3.controls.target);
-    if (dir.length() < 0.01) dir.set(0, 0.5, 1);
-    dir.normalize();
-    var toPos = targetPos.clone().add(dir.multiplyScalar(dist));
-    T3.fly = {
-      start: performance.now(),
-      dur: 1400,
-      fromPos: T3.camera.position.clone(),
-      fromTarget: T3.controls.target.clone(),
-      toPos: toPos,
-      toTarget: targetPos.clone(),
-    };
-    T3.controls.enabled = false;
-    requestAnimationFrame(stepFly3D);
-  }
-
-  function stepFly3D(ts) {
-    if (!T3 || !T3.fly) return;
-    var k = clamp((ts - T3.fly.start) / T3.fly.dur, 0, 1);
-    var e = 1 - Math.pow(1 - k, 3);
-    T3.camera.position.lerpVectors(T3.fly.fromPos, T3.fly.toPos, e);
-    T3.controls.target.lerpVectors(T3.fly.fromTarget, T3.fly.toTarget, e);
-    T3.camera.lookAt(T3.controls.target);
-    if (k < 1) {
-      requestAnimationFrame(stepFly3D);
-    } else {
-      T3.fly = null;
-      T3.controls.enabled = true;
-      T3.controls.update();
-    }
-  }
-
-  function focusTarget(f) {
-    var tYears = year - 2000;
-    if (mode3d && T3) {
-      var pos = null,
-        dist = 3;
-      if (f.planet) {
-        pos = T3.bodies[f.planet].position.clone();
-        dist = Math.max(0.9, RADIUS[f.planet] * 7);
-      } else if (f.mission) {
-        var mm = T3.missionMeshes.filter(function (x) {
-          return x.mission.id === f.mission;
-        })[0];
-        if (mm) {
-          var mp = mission3DPos(mm.mission, tYears);
-          if (!mp) mp = new THREE.Vector3(0, 0, 0);
-          pos = mp.clone();
-          dist = 2.2;
-        }
-      } else if (f.sun) {
-        pos = new THREE.Vector3(0, 0, 0);
-        dist = 4.5;
-      }
-      if (pos) flyTo3D(pos, dist);
-      return;
-    }
-    if (f.planet) {
-      var p = PLANETS.filter(function (x) {
-        return x.id === f.planet;
-      })[0];
-      selected = p.id;
-      showInfo(p);
-      zoomToPlanet(p, tYears);
-    } else if (f.mission) {
-      var m = MISSIONS.filter(function (x) {
-        return x.id === f.mission;
-      })[0];
-      selected = m.id;
-      showMission(m, tYears);
-    }
-  }
-
-  // ---------- 故事线 ----------
-  var storyState = null;
-  var storyPanel = document.getElementById('solar-story');
-  // 文章容器可能带 transform，fixed 会相对它定位；挂到 body 下避免
-  if (storyPanel && storyPanel.parentElement !== document.body)
-    document.body.appendChild(storyPanel);
-  var storyTitle = document.getElementById('solar-story-title');
-  var storyText = document.getElementById('solar-story-text');
-  var storyProgress = document.getElementById('solar-story-progress');
-  var storyPrev = document.getElementById('solar-story-prev');
-  var storyNext = document.getElementById('solar-story-next');
-  var storyClose = document.getElementById('solar-story-close');
-
-  function startStory(story) {
-    storyState = { story: story, index: 0 };
-    storyPanel.hidden = false;
-    infoEl.hidden = true;
-    selected = null;
-    if (stage && stage.scrollIntoView)
-      stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    gotoStoryStep(0);
-  }
-
-  function gotoStoryStep(i) {
-    if (!storyState) return;
-    var steps = storyState.story.steps;
-    storyState.index = clamp(i, 0, steps.length - 1);
-    var step = steps[storyState.index];
-    storyTitle.textContent = storyState.story.title;
-    storyText.textContent = step.text;
-    storyProgress.textContent = storyState.index + 1 + ' / ' + steps.length;
-    storyPrev.disabled = storyState.index === 0;
-    storyNext.disabled = storyState.index === steps.length - 1;
-    playing = false;
-    playBtn.textContent = '▶ 播放';
-    setYear(step.year);
-    focusTarget(step.focus);
-    draw();
-  }
-
-  if (storyPrev) {
-    storyPrev.addEventListener('click', function () {
-      gotoStoryStep(storyState.index - 1);
-    });
-    storyNext.addEventListener('click', function () {
-      gotoStoryStep(storyState.index + 1);
-    });
-    storyClose.addEventListener('click', function () {
-      storyState = null;
-      storyPanel.hidden = true;
-    });
-  }
-
-  function buildStories() {
-    var box = document.getElementById('solar-stories');
-    if (!box) return;
-    STORIES.forEach(function (story) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = '▶ ' + story.title;
-      btn.addEventListener('click', function () {
-        startStory(story);
-      });
-      box.appendChild(btn);
-    });
-  }
-
-  function buildEvents() {
-    var box = document.getElementById('solar-events');
-    if (!box) return;
-    EVENTS.forEach(function (ev) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = ev.year + ' ' + ev.label;
-      btn.addEventListener('click', function () {
-        playing = false;
-        playBtn.textContent = '▶ 播放';
-        setYear(ev.year);
-        Array.prototype.forEach.call(box.children, function (c) {
-          c.classList.remove('active');
-        });
-        btn.classList.add('active');
-      });
-      box.appendChild(btn);
-    });
-  }
-
-  var missionsToggle = document.getElementById('solar-missions');
-  if (missionsToggle) {
-    missionsToggle.addEventListener('change', function () {
-      showMissions = missionsToggle.checked;
-      draw();
-    });
-  }
-
-  // ---------- 控制 ----------
-  function setYear(v) {
-    year = clamp(v, MIN_YEAR, MAX_YEAR);
-    yearEl.textContent = year.toFixed(1);
-    slider.value = String(year);
-    draw();
-  }
-
-  slider.addEventListener('input', function () {
-    playing = false;
-    playBtn.textContent = '▶ 播放';
-    setYear(parseFloat(slider.value));
-  });
-
-  playBtn.addEventListener('click', function () {
-    playing = !playing;
-    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 播放';
-    if (playing) {
-      if (year >= MAX_YEAR) setYear(MIN_YEAR);
-      lastTs = 0;
-      requestAnimationFrame(tick);
-    }
-  });
-
-  speedSel.addEventListener('change', function () {
-    speed = parseFloat(speedSel.value);
-  });
-
-  resetBtn.addEventListener('click', function () {
-    if (mode3d && T3) {
-      T3.fly = null;
-      T3.camera.position.set(0, 14, 22);
-      T3.controls.target.set(0, 0, 0);
-      T3.controls.enabled = true;
-      T3.controls.update();
-      return;
-    }
-    zoom = 1;
-    panX = 0;
-    panY = 0;
-    selected = null;
-    infoEl.hidden = true;
-    draw();
-  });
-
-  var lastTs = 0;
-  function tick(ts) {
-    if (!playing) return;
-    if (!lastTs) lastTs = ts;
-    var dt = Math.min(0.05, (ts - lastTs) / 1000);
-    lastTs = ts;
-    setYear(year + dt * speed);
-    if (year >= MAX_YEAR) {
-      playing = false;
-      playBtn.textContent = '▶ 播放';
-      return;
-    }
-    requestAnimationFrame(tick);
-  }
-
-  buildEvents();
-  buildStories();
-  window.addEventListener('resize', resize);
-  resize();
-  setYear(MAX_YEAR);
-
-  // ================= 3D 视角（Three.js 懒加载） =================
-  var appEl = document.getElementById('solar-app');
-  var canvas3d = document.getElementById('solar-canvas3d');
-  var labelsBox = document.getElementById('solar-labels');
-  var modeBtn = document.getElementById('solar-mode');
-  var mode3d = false;
+  // ---------- 依赖加载（本地 vendor，不走 CDN） ----------
   var threePromise = null;
-  var T3 = null;
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -1425,14 +608,16 @@
 
   function loadThree() {
     if (window.THREE && window.THREE.OrbitControls) return Promise.resolve();
-    if (threePromise) return threePromise;
-    threePromise = loadScript(
-      'https://gcore.jsdelivr.net/npm/three@0.128.0/build/three.min.js'
-    ).then(function () {
-      return loadScript(
-        'https://gcore.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'
-      );
-    });
+    if (!threePromise) {
+      threePromise = loadScript('/js/vendor/three.min.js')
+        .then(function () {
+          return loadScript('/js/vendor/OrbitControls.js');
+        })
+        .catch(function (err) {
+          threePromise = null;
+          throw err;
+        });
+    }
     return threePromise;
   }
 
@@ -1465,15 +650,47 @@
     return Math.log(1 + rAU * 3) * 1.4 + Math.max(0, rAU - 2) * 0.06;
   }
 
+  // ---------- 贴图：统一缓存，避免同一张图重复下载 ----------
+  var texCache = {};
+  var maxAniso = 1;
+  var RING_TEX = '/images/textures/saturn-ring.png';
+
+  function loadTex(url) {
+    if (texCache[url]) return texCache[url];
+    if (!texLoader) texLoader = new THREE.TextureLoader();
+    var tex = (texCache[url] = texLoader.load(url));
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.anisotropy = maxAniso;
+    if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+    return tex;
+  }
+
   function applyTexture(p, mesh) {
     if (!TEXTURES[p.id]) return;
-    if (!texLoader) texLoader = new THREE.TextureLoader();
-    texLoader.load(TEXTURES[p.id], function (tex) {
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.anisotropy = 4;
-      mesh.material.map = tex;
-      mesh.material.needsUpdate = true;
-    });
+    mesh.material.map = loadTex(TEXTURES[p.id]);
+    mesh.material.needsUpdate = true;
+  }
+
+  /* RingGeometry 的默认 uv 是矩形展开，环带贴图需要把 u 重新映射到半径上 */
+  function ringTextureGeometry(inner, outer) {
+    var geo = new THREE.RingGeometry(inner, outer, 96, 1);
+    var pos = geo.attributes.position;
+    var uv = geo.attributes.uv;
+    for (var i = 0; i < pos.count; i++) {
+      var r = Math.sqrt(pos.getX(i) * pos.getX(i) + pos.getY(i) * pos.getY(i));
+      uv.setXY(i, (r - inner) / (outer - inner), 0.5);
+    }
+    uv.needsUpdate = true;
+    return geo;
+  }
+
+  function pos3DInto(p, tYears, out) {
+    var st = orbitalState(p, tYears);
+    var R = scale3D(st.r);
+    var y = R * Math.sin(st.ang);
+    var inc = (p.inc || 0) * DEG;
+    out.set(R * Math.cos(st.ang), y * Math.cos(inc), y * Math.sin(inc));
+    return out;
   }
 
   function pos3D(p, tYears) {
@@ -1643,40 +860,338 @@
     }
     return null;
   }
+  function showMission(m, tYears) {
+    var yearNow = 2000 + tYears;
+    var rows = '<dt>发射</dt><dd>' + m.year + ' 年</dd>';
+    if (m.kind === 'deep') {
+      rows += '<dt>日心距</dt><dd>' + m.dist(yearNow).toFixed(1) + ' AU</dd>';
+    } else if (m.kind === 'l2') {
+      rows += '<dt>位置</dt><dd>日地 L2 点（约 1.01 AU）</dd>';
+    } else if (m.kind === 'sun') {
+      rows += '<dt>轨道</dt><dd>近日点约 0.05 AU</dd>';
+    } else {
+      var p = PLANETS.filter(function (x) {
+        return x.id === m.planet;
+      })[0];
+      rows += '<dt>所在天体</dt><dd>' + p.zh + '</dd>';
+    }
+    if (m.agency) rows += '<dt>机构</dt><dd>' + m.agency + '</dd>';
+    if (m.status) rows += '<dt>状态</dt><dd>' + m.status + '</dd>';
+    if (m.target) rows += '<dt>目标</dt><dd>' + m.target + '</dd>';
+    infoEl.hidden = false;
+    infoEl.innerHTML =
+      '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
+      '<h3>' +
+      m.zh +
+      ' <small>' +
+      m.en +
+      '</small></h3>' +
+      '<dl>' +
+      rows +
+      '</dl>' +
+      '<p>' +
+      m.note +
+      '</p>' +
+      (m.story ? '<p class="solar-info-story">' + m.story + '</p>' : '');
+    infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
+      infoEl.hidden = true;
+      selected = null;
+      if (T3) setFollow(null);
+      wake();
+    });
+  }
+
+  function showInfo(p) {
+    infoEl.hidden = false;
+    infoEl.innerHTML =
+      '<button class="solar-info-close" type="button" aria-label="关闭">×</button>' +
+      '<h3>' +
+      p.zh +
+      ' <small>' +
+      p.en +
+      '</small></h3>' +
+      '<dl>' +
+      '<dt>直径</dt><dd>' +
+      p.diameter +
+      '</dd>' +
+      '<dt>公转周期</dt><dd>' +
+      fmtPeriod(p.P) +
+      '</dd>' +
+      '<dt>自转周期</dt><dd>' +
+      p.day +
+      '</dd>' +
+      '<dt>轨道半长轴</dt><dd>' +
+      p.a.toFixed(3) +
+      ' AU</dd>' +
+      '<dt>偏心率</dt><dd>' +
+      p.e.toFixed(4) +
+      '</dd>' +
+      '</dl>' +
+      '<p>' +
+      p.fact +
+      '</p>';
+    infoEl.querySelector('.solar-info-close').addEventListener('click', function () {
+      infoEl.hidden = true;
+      selected = null;
+      if (T3) setFollow(null);
+      wake();
+    });
+  }
+
+  function fmtPeriod(y) {
+    if (y < 1) return (y * 365.25).toFixed(1) + ' 天';
+    return y.toFixed(2) + ' 年';
+  }
+
+  function clamp(v, a, b) {
+    return Math.max(a, Math.min(b, v));
+  }
+
+  // ---------- 故事线 ----------
+  var storyState = null;
+  var storyPanel = document.getElementById('solar-story');
+  // 文章容器可能带 transform，fixed 会相对它定位；挂到 body 下避免
+  if (storyPanel && storyPanel.parentElement !== document.body)
+    document.body.appendChild(storyPanel);
+  var storyTitle = document.getElementById('solar-story-title');
+  var storyText = document.getElementById('solar-story-text');
+  var storyProgress = document.getElementById('solar-story-progress');
+  var storyPrev = document.getElementById('solar-story-prev');
+  var storyNext = document.getElementById('solar-story-next');
+  var storyClose = document.getElementById('solar-story-close');
+
+  function startStory(story) {
+    storyState = { story: story, index: 0 };
+    storyPanel.hidden = false;
+    infoEl.hidden = true;
+    selected = null;
+    if (stage && stage.scrollIntoView)
+      stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    gotoStoryStep(0);
+  }
+
+  function gotoStoryStep(i) {
+    if (!storyState) return;
+    var steps = storyState.story.steps;
+    storyState.index = clamp(i, 0, steps.length - 1);
+    var step = steps[storyState.index];
+    storyTitle.textContent = storyState.story.title;
+    storyText.textContent = step.text;
+    storyProgress.textContent = storyState.index + 1 + ' / ' + steps.length;
+    storyPrev.disabled = storyState.index === 0;
+    storyNext.disabled = storyState.index === steps.length - 1;
+    playing = false;
+    playBtn.textContent = '▶ 播放';
+    setYear(step.year);
+    focusTarget(step.focus);
+    wake();
+  }
+
+  if (storyPrev) {
+    storyPrev.addEventListener('click', function () {
+      gotoStoryStep(storyState.index - 1);
+    });
+    storyNext.addEventListener('click', function () {
+      gotoStoryStep(storyState.index + 1);
+    });
+    storyClose.addEventListener('click', function () {
+      storyState = null;
+      storyPanel.hidden = true;
+    });
+  }
+
+  function buildStories() {
+    var box = document.getElementById('solar-stories');
+    if (!box) return;
+    STORIES.forEach(function (story) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '▶ ' + story.title;
+      btn.addEventListener('click', function () {
+        startStory(story);
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function buildEvents() {
+    var box = document.getElementById('solar-events');
+    if (!box) return;
+    EVENTS.forEach(function (ev) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = ev.year + ' ' + ev.label;
+      btn.addEventListener('click', function () {
+        playing = false;
+        playBtn.textContent = '▶ 播放';
+        setYear(ev.year);
+        Array.prototype.forEach.call(box.children, function (c) {
+          c.classList.remove('active');
+        });
+        btn.classList.add('active');
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function setYear(v) {
+    year = clamp(v, MIN_YEAR, MAX_YEAR);
+    yearEl.textContent = year.toFixed(1);
+    slider.value = String(year);
+    wake();
+  }
+
+  // ================= 三维场景 =================
+  var T3 = null;
+  var needRender = true;
+  var lastTs = 0;
+  var rect = { width: 1, height: 1 };
+  var labelW = {};
+  var placed = [];
+  var ray = null;
+  var mouse = null;
+  var STARS = 800;
+  var INNER = ['mercury', 'venus', 'earth', 'mars'];
+  var SPIN = {
+    mercury: 0.42,
+    venus: -0.16,
+    earth: 0.9,
+    mars: 0.88,
+    jupiter: 2.1,
+    saturn: 1.9,
+    uranus: 1.4,
+    neptune: 1.5,
+    pluto: 0.28,
+  };
+
+  function wake() {
+    needRender = true;
+  }
+
+  function measureRect() {
+    var r = stage.getBoundingClientRect();
+    rect.width = Math.max(1, r.width);
+    rect.height = Math.max(1, r.height);
+  }
+
+  function resize3D() {
+    if (!T3) return;
+    measureRect();
+    T3.renderer.setSize(rect.width, rect.height, false);
+    T3.camera.aspect = rect.width / rect.height;
+    T3.camera.updateProjectionMatrix();
+    wake();
+  }
+
+  var flyDir = null;
+
+  function flyTo3D(targetPos, dist) {
+    if (!T3) return;
+    if (!flyDir) flyDir = new THREE.Vector3();
+    var dir = flyDir.copy(T3.camera.position).sub(T3.controls.target);
+    if (dir.length() < 0.01) dir.set(0, 0.5, 1);
+    dir.normalize();
+    T3.fly = {
+      start: performance.now(),
+      dur: 1100,
+      fromPos: T3.camera.position.clone(),
+      fromTarget: T3.controls.target.clone(),
+      toPos: targetPos.clone().add(dir.multiplyScalar(dist)),
+      toTarget: targetPos.clone(),
+    };
+    T3.controls.enabled = false;
+    wake();
+  }
+
+  function stepFly(ts) {
+    var f = T3.fly;
+    var k = clamp((ts - f.start) / f.dur, 0, 1);
+    var e = 1 - Math.pow(1 - k, 3);
+    T3.camera.position.lerpVectors(f.fromPos, f.toPos, e);
+    T3.controls.target.lerpVectors(f.fromTarget, f.toTarget, e);
+    T3.camera.lookAt(T3.controls.target);
+    needRender = true;
+    if (k >= 1) {
+      T3.fly = null;
+      T3.controls.enabled = true;
+    }
+  }
+
+  function focusTarget(f) {
+    if (!T3) return;
+    var tYears = year - 2000;
+    var pos = null;
+    var dist = 3;
+    if (f.planet) {
+      pos = T3.bodies[f.planet].position.clone();
+      dist = Math.max(0.9, RADIUS[f.planet] * 7);
+    } else if (f.mission) {
+      for (var i = 0; i < T3.missionMeshes.length; i++) {
+        var mm = T3.missionMeshes[i];
+        if (mm.mission.id !== f.mission) continue;
+        pos = mission3DPos(mm.mission, tYears);
+        if (!pos) pos = new THREE.Vector3(0, 0, 0);
+        else pos = pos.clone();
+        dist = 2.2;
+        break;
+      }
+    } else if (f.sun) {
+      pos = new THREE.Vector3(0, 0, 0);
+      dist = 4.5;
+    }
+    if (!pos) return;
+    if (f.planet) setFollow(T3.bodies[f.planet]);
+    else if (f.mission) {
+      for (var j = 0; j < T3.missionMeshes.length; j++) {
+        if (T3.missionMeshes[j].mission.id === f.mission) setFollow(T3.missionMeshes[j].mesh);
+      }
+    } else {
+      setFollow(null);
+    }
+    flyTo3D(pos, dist);
+  }
 
   function init3D() {
-    var renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    if (THREE.Cache) THREE.Cache.enabled = true;
+    var renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    renderer.setPixelRatio(dpr);
+    if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+    maxAniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 600);
     camera.position.set(0, 14, 22);
-    var controls = new THREE.OrbitControls(camera, canvas3d);
+    var controls = new THREE.OrbitControls(camera, canvas);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
     controls.minDistance = 3;
     controls.maxDistance = 80;
-    controls.autoRotate = true;
+    controls.autoRotate = !REDUCED;
     controls.autoRotateSpeed = 0.18;
+    controls.addEventListener('change', wake);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.32));
     scene.add(new THREE.HemisphereLight(0x9db4ff, 0x101426, 0.38));
-    var sunLight = new THREE.PointLight(0xfff2d0, 1.35, 0, 0);
-    scene.add(sunLight);
+    scene.add(new THREE.PointLight(0xfff2d0, 1.35, 0, 0));
 
     var starGeo = new THREE.BufferGeometry();
-    var arr = [];
-    for (var i = 0; i < 1600; i++) {
+    var arr = new Float32Array(STARS * 3);
+    for (var i = 0; i < STARS; i++) {
       var rr = 120 + Math.random() * 120;
       var th = Math.random() * Math.PI * 2;
       var ph = Math.acos(2 * Math.random() - 1);
-      arr.push(
-        rr * Math.sin(ph) * Math.cos(th),
-        rr * Math.cos(ph),
-        rr * Math.sin(ph) * Math.sin(th)
-      );
+      arr[i * 3] = rr * Math.sin(ph) * Math.cos(th);
+      arr[i * 3 + 1] = rr * Math.cos(ph);
+      arr[i * 3 + 2] = rr * Math.sin(ph) * Math.sin(th);
     }
-    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    starGeo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
     scene.add(
       new THREE.Points(
         starGeo,
@@ -1686,12 +1201,8 @@
 
     var sunMat = new THREE.MeshBasicMaterial({ color: 0xffe08a });
     var sun = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 24), sunMat);
-    if (TEXTURES.sun) {
-      new THREE.TextureLoader().load(TEXTURES.sun, function (tex) {
-        sunMat.map = tex;
-        sunMat.needsUpdate = true;
-      });
-    }
+    sunMat.map = loadTex(TEXTURES.sun);
+    sunMat.needsUpdate = true;
     scene.add(sun);
     var glow = new THREE.Sprite(
       new THREE.SpriteMaterial({
@@ -1721,28 +1232,31 @@
         })
       );
       applyTexture(p, mesh);
+      mesh.rotation.z = (p.tilt || 0) * DEG;
       scene.add(mesh);
       mesh.userData = { type: 'planet', id: p.id };
       pickables.push(mesh);
 
-      var line = new THREE.LineLoop(
-        new THREE.BufferGeometry().setFromPoints(orbit3DPoints(p)),
-        new THREE.LineBasicMaterial({
-          color: new THREE.Color(p.color),
-          transparent: true,
-          opacity: 0.34,
-        })
+      scene.add(
+        new THREE.LineLoop(
+          new THREE.BufferGeometry().setFromPoints(orbit3DPoints(p)),
+          new THREE.LineBasicMaterial({
+            color: new THREE.Color(p.color),
+            transparent: true,
+            opacity: 0.34,
+          })
+        )
       );
-      scene.add(line);
 
       if (p.id === 'saturn') {
+        var inner = RADIUS[p.id] * 1.35;
         var ring = new THREE.Mesh(
-          new THREE.RingGeometry(RADIUS[p.id] * 1.35, RADIUS[p.id] * 2.3, 72),
+          ringTextureGeometry(inner, RADIUS[p.id] * 2.3),
           new THREE.MeshBasicMaterial({
-            color: 0xe6d3a3,
+            map: loadTex(RING_TEX),
             transparent: true,
-            opacity: 0.5,
             side: THREE.DoubleSide,
+            depthWrite: false,
           })
         );
         ring.rotation.x = Math.PI / 2;
@@ -1754,7 +1268,6 @@
       label.textContent = p.zh;
       labelsBox.appendChild(label);
       labels.push({ el: label, obj: mesh, kind: 'planet', id: p.id });
-
       bodies[p.id] = mesh;
     });
 
@@ -1792,182 +1305,340 @@
       labels: labels,
       pickables: pickables,
       missionMeshes: missionMeshes,
-      running: true,
+      tmp: new THREE.Vector3(),
+      tmp2: new THREE.Vector3(),
+      follow: null,
+      dpr: dpr,
+      fly: null,
+      ready: false,
     };
+    measureRect();
     resize3D();
     bind3DClick();
-    requestAnimationFrame(render3D);
   }
 
-  function resize3D() {
-    if (!T3) return;
-    var rect = stage.getBoundingClientRect();
-    T3.renderer.setSize(rect.width, rect.height, false);
-    T3.camera.aspect = rect.width / Math.max(1, rect.height);
-    T3.camera.updateProjectionMatrix();
+  /* 选中目标后镜头随它平移：暂停细看、拖时间轴时关注的地平不会漂出画面。
+     播放时不跟随——0.5 年/秒的速度下追着公转天体跑画面会失控。 */
+  function followTarget() {
+    if (!T3.follow || T3.fly || playing) return;
+    var delta = T3.tmp2;
+    T3.follow.getWorldPosition(T3.tmp);
+    delta.copy(T3.tmp).sub(T3.controls.target);
+    if (delta.lengthSq() < 1e-9) return;
+    T3.camera.position.add(delta);
+    T3.controls.target.add(delta);
+    needRender = true;
   }
 
-  function render3D() {
-    if (!T3) return;
-    if (!mode3d) {
-      T3.running = false;
-      return;
-    }
-    T3.running = true;
-    if (!T3.fly) T3.controls.update();
+  function setFollow(obj) {
+    T3.follow = obj || null;
+  }
+
+  function draw3D(dt) {
     var tYears = year - 2000;
-    PLANETS.forEach(function (p) {
-      T3.bodies[p.id].position.copy(pos3D(p, tYears));
-    });
-    T3.missionMeshes.forEach(function (mm) {
-      var pos = mission3DPos(mm.mission, tYears);
+    var i;
+    for (i = 0; i < PLANETS.length; i++) {
+      var mesh = T3.bodies[PLANETS[i].id];
+      pos3DInto(PLANETS[i], tYears, mesh.position);
+      if (playing) mesh.rotation.y += dt * (SPIN[PLANETS[i].id] || 0.5);
+    }
+    for (i = 0; i < T3.missionMeshes.length; i++) {
+      var mm = T3.missionMeshes[i];
+      var pos = showMissions ? mission3DPos(mm.mission, tYears) : null;
       if (pos) {
         mm.mesh.position.copy(pos);
         mm.mesh.visible = true;
       } else {
         mm.mesh.visible = false;
       }
-    });
+    }
+    followTarget();
     update3DLabels();
     T3.renderer.render(T3.scene, T3.camera);
-    requestAnimationFrame(render3D);
+    if (!T3.ready) {
+      T3.ready = true;
+      canvas.setAttribute('data-ready', '1');
+      if (loadingEl) loadingEl.hidden = true;
+    }
+  }
+
+  function labelVisible(l, x, camDist) {
+    if (l.kind === 'mission') return selected === l.id || camDist >= 7;
+    return !(INNER.indexOf(l.id) >= 0 && selected !== l.id && camDist > 20);
   }
 
   function update3DLabels() {
-    var rect = stage.getBoundingClientRect();
-    var placed = [];
-    T3.labels.forEach(function (l) {
-      var v = new THREE.Vector3();
+    var placedN = 0;
+    // 跟随会让相机在两次 render 之间移动，先同步世界矩阵，否则标注会滞后一帧
+    T3.camera.updateMatrixWorld();
+    var camDist = T3.camera.position.length();
+    for (var i = 0; i < T3.labels.length; i++) {
+      var l = T3.labels[i];
+      var v = T3.tmp2;
       l.obj.getWorldPosition(v);
       v.project(T3.camera);
-      var visible = v.z < 1 && l.obj.visible;
-      l.el.style.display = visible ? 'block' : 'none';
-      if (!visible) return;
-      if (l.kind === 'mission' && selected !== l.id && T3.camera.position.length() < 7) {
+      if (v.z >= 1 || !l.obj.visible || !labelVisible(l, 0, camDist)) {
         l.el.style.display = 'none';
-        return;
-      }
-      if (
-        l.kind === 'planet' &&
-        ['mercury', 'venus', 'earth', 'mars'].indexOf(l.id) >= 0 &&
-        selected !== l.id
-      ) {
-        var camDist = T3.camera.position.length();
-        if (camDist > 20) {
-          l.el.style.display = 'none';
-          return;
-        }
+        continue;
       }
       var x = (v.x * 0.5 + 0.5) * rect.width;
       var y = (-v.y * 0.5 + 0.5) * rect.height - 12;
-      var w = Math.max(30, l.el.offsetWidth || l.el.textContent.length * 10);
+      if (!labelW[l.id]) {
+        labelW[l.id] = Math.max(30, l.el.offsetWidth || l.el.textContent.length * 10);
+      }
+      var w = labelW[l.id];
       var offsets = [0, -13, 13, -26];
-      for (var i = 0; i < offsets.length; i++) {
-        var box = { x: x - w / 2, y: y + offsets[i] - 9, w: w, h: 12 };
-        var clash = placed.some(function (b) {
-          return (
-            box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y
-          );
-        });
+      for (var k = 0; k < offsets.length; k++) {
+        var box = placed[placedN] || (placed[placedN] = { x: 0, y: 0, w: 0, h: 0 });
+        box.x = x - w / 2;
+        box.y = y + offsets[k] - 9;
+        box.w = w;
+        box.h = 12;
+        var clash = false;
+        for (var j = 0; j < placedN; j++) {
+          var b = placed[j];
+          if (
+            box.x < b.x + b.w &&
+            box.x + box.w > b.x &&
+            box.y < b.y + b.h &&
+            box.y + box.h > b.y
+          ) {
+            clash = true;
+            break;
+          }
+        }
         if (!clash || l.id === selected) {
-          y += offsets[i];
+          y += offsets[k];
           break;
         }
       }
-      placed.push({ x: x - w / 2, y: y - 9, w: w, h: 12 });
+      placed[placedN].x = x - w / 2;
+      placed[placedN].y = y - 9;
+      placedN++;
       l.el.style.left = x + 'px';
       l.el.style.top = y + 'px';
-      l.el.classList.toggle('selected', selected === l.id);
-    });
+      l.el.style.display = 'block';
+      if (l.el.classList.contains('selected') !== (selected === l.id)) {
+        l.el.classList.toggle('selected', selected === l.id);
+      }
+    }
   }
 
   function bind3DClick() {
     var down = null;
-    canvas3d.addEventListener('pointerdown', function (e) {
+    canvas.addEventListener('pointerdown', function (e) {
       down = { x: e.clientX, y: e.clientY };
+      // 用户接管视角后不再自转，避免和手动操作打架
+      if (T3) T3.controls.autoRotate = false;
     });
-    canvas3d.addEventListener('pointerup', function (e) {
-      if (!down) return;
+    canvas.addEventListener('pointerup', function (e) {
+      if (!down || !T3) return;
       var moved = Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 6;
       down = null;
-      if (moved || !T3) return;
-      var rect = canvas3d.getBoundingClientRect();
-      var mouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      if (moved) return;
+      if (!ray) {
+        ray = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+      }
+      var r = canvas.getBoundingClientRect();
+      mouse.set(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        -((e.clientY - r.top) / r.height) * 2 + 1
       );
-      var ray = new THREE.Raycaster();
       ray.setFromCamera(mouse, T3.camera);
       var hits = ray.intersectObjects(T3.pickables, false);
-      if (!hits.length) return;
+      if (!hits.length) {
+        selected = null;
+        setFollow(null);
+        infoEl.hidden = true;
+        wake();
+        return;
+      }
       var obj = hits[0].object;
       var tYears = year - 2000;
+      selected = obj.userData.id;
+      setFollow(obj);
       if (obj.userData.type === 'planet') {
-        selected = obj.userData.id;
         var p = PLANETS.filter(function (x) {
           return x.id === selected;
         })[0];
         showInfo(p);
-        var wp = new THREE.Vector3();
-        obj.getWorldPosition(wp);
-        flyTo3D(wp, Math.max(0.9, RADIUS[selected] * 7));
+        flyTo3D(T3.tmp.copy(obj.position), Math.max(0.9, RADIUS[selected] * 7));
       } else {
-        selected = obj.userData.id;
         var m = MISSIONS.filter(function (x) {
           return x.id === selected;
         })[0];
         showMission(m, tYears);
-        var mp = new THREE.Vector3();
-        obj.getWorldPosition(mp);
-        flyTo3D(mp, 1.6);
+        flyTo3D(T3.tmp.copy(obj.position), 1.6);
       }
+      wake();
     });
   }
 
-  function enter3D() {
-    mode3d = true;
-    appEl.classList.add('mode-3d');
-    modeBtn.textContent = '2D 视角';
-    var badge = document.querySelector('.solar-badge span');
-    if (badge) badge.textContent = '年 · 三维视角';
+  // ---------- 主循环：只在时间流动、相机移动或选中变化时重绘 ----------
+  var MIN_DPR = 0.75;
+  var MAX_DPR = 1.5;
+  var TARGET_MS = 22; // 约 45fps，低于它就降分辨率
+  var cpuEma = 0;
+  var cadenceEma = 0;
+  var lastFrame = 0;
+  var lastRender = 0;
+  var lastStep = 0;
+  var minGap = 0;
+  var statT0 = 0;
+
+  /* 上一帧的主线程占用越久，下一帧就让出越多时间：慢设备上操作依然跟手 */
+  function paceFrame(cost) {
+    cpuEma = cpuEma ? cpuEma * 0.8 + cost * 0.2 : cost;
+    minGap = cpuEma > 55 ? 50 : cpuEma > 26 ? 33 : 0;
+  }
+
+  /* rAF 间隔才是用户看到的流畅度：WebGL 提交是异步的，用提交耗时判断会失真 */
+  function trackCadence(ts) {
+    if (lastFrame) {
+      var d = ts - lastFrame;
+      if (d > 0 && d < 250) cadenceEma = cadenceEma ? cadenceEma * 0.9 + d * 0.1 : d;
+    }
+    lastFrame = ts;
+  }
+
+  /* 动态分辨率：帧率不达标就降低渲染倍率，而不是删内容或丢帧 */
+  function adaptQuality(ts) {
+    if (T3.dpr <= MIN_DPR || ts - lastStep < 800) return;
+    if (!cadenceEma || cadenceEma < TARGET_MS) return;
+    lastStep = ts;
+    T3.dpr = Math.max(MIN_DPR, Math.round((T3.dpr - 0.25) * 100) / 100);
+    T3.renderer.setPixelRatio(T3.dpr);
     resize3D();
-    if (T3) {
-      T3.running = true;
-      requestAnimationFrame(render3D);
+    cadenceEma = 0;
+  }
+
+  function reportStats(ts) {
+    if (!statT0) statT0 = ts;
+    if (ts - statT0 < 1000) return;
+    statT0 = ts;
+    canvas.setAttribute('data-cost', cpuEma.toFixed(1));
+    canvas.setAttribute('data-fps', cadenceEma ? (1000 / cadenceEma).toFixed(1) : '0');
+    canvas.setAttribute('data-dpr', String(T3.dpr));
+  }
+
+  function advanceYear(dt) {
+    setYear(year + dt * speed);
+    if (year >= MAX_YEAR) {
+      playing = false;
+      playBtn.textContent = '▶ 播放';
     }
   }
 
-  function exit3D() {
-    mode3d = false;
-    appEl.classList.remove('mode-3d');
-    modeBtn.textContent = '3D 视角';
-    var badge2 = document.querySelector('.solar-badge span');
-    if (badge2) badge2.textContent = '年 · 二维俯视';
-    draw();
+  function loop(ts) {
+    if (T3) {
+      trackCadence(ts);
+      var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
+      lastTs = ts;
+      if (playing) advanceYear(dt);
+      if (T3.fly) stepFly(ts);
+      else T3.controls.update();
+      if (needRender && ts - lastRender >= minGap) {
+        needRender = false;
+        lastRender = ts;
+        var t0 = performance.now();
+        draw3D(dt);
+        paceFrame(performance.now() - t0);
+        adaptQuality(ts);
+        reportStats(ts);
+      }
+    }
+    requestAnimationFrame(loop);
   }
 
-  if (modeBtn) {
-    modeBtn.addEventListener('click', function () {
-      if (mode3d) {
-        exit3D();
-        return;
-      }
-      modeBtn.disabled = true;
-      modeBtn.textContent = '加载 3D…';
-      loadThree()
-        .then(function () {
-          if (!T3) init3D();
-          enter3D();
-          modeBtn.disabled = false;
-        })
-        .catch(function () {
-          modeBtn.textContent = '3D 加载失败';
-          modeBtn.disabled = false;
-        });
+  function resetView() {
+    if (!T3) return;
+    T3.fly = null;
+    T3.camera.position.set(0, 14, 22);
+    T3.controls.target.set(0, 0, 0);
+    T3.controls.enabled = true;
+    T3.controls.autoRotate = !REDUCED;
+    T3.controls.update();
+    selected = null;
+    setFollow(null);
+    infoEl.hidden = true;
+    wake();
+  }
+
+  // ---------- 控制 ----------
+  slider.addEventListener('input', function () {
+    playing = false;
+    playBtn.textContent = '▶ 播放';
+    setYear(parseFloat(slider.value));
+  });
+
+  playBtn.addEventListener('click', function () {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ 暂停' : '▶ 播放';
+    if (playing) setFollow(null); // 时间快进时看全局，不再锁定单个天体
+    if (playing && year >= MAX_YEAR) setYear(MIN_YEAR);
+    lastTs = 0;
+    wake();
+  });
+
+  speedSel.addEventListener('change', function () {
+    speed = parseFloat(speedSel.value);
+  });
+
+  resetBtn.addEventListener('click', resetView);
+
+  if (missionsToggle) {
+    missionsToggle.addEventListener('change', function () {
+      showMissions = missionsToggle.checked;
+      wake();
     });
   }
 
-  window.addEventListener('resize', function () {
-    if (mode3d) resize3D();
+  if (window.ResizeObserver) new ResizeObserver(resize3D).observe(stage);
+  else window.addEventListener('resize', resize3D);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+      lastTs = 0;
+      wake();
+    }
   });
+
+  /* 仅带 ?debug=1 时暴露内部状态，供排查和端到端断言使用 */
+  function exposeDebug() {
+    if (!/[?&]debug=1/.test(location.search)) return;
+    window.solarDebug = function () {
+      if (!T3) return { ready: false };
+      var earth = T3.bodies.earth;
+      var focus = T3.follow || earth;
+      var v = new THREE.Vector3().copy(focus.position).project(T3.camera);
+      return {
+        ready: T3.ready,
+        dpr: T3.dpr,
+        playing: playing,
+        year: +year.toFixed(2),
+        follow: T3.follow ? T3.follow.userData.id : null,
+        earth: earth.position.toArray(),
+        // 当前锁定目标相对画面中心的偏移，(0,0) 表示正中
+        focusNdc: [+v.x.toFixed(3), +v.y.toFixed(3)],
+      };
+    };
+  }
+
+  // ---------- 启动 ----------
+  buildEvents();
+  buildStories();
+  if (missionsToggle) showMissions = missionsToggle.checked;
+  measureRect();
+  setYear(MAX_YEAR);
+  requestAnimationFrame(loop);
+  loadThree()
+    .then(function () {
+      init3D();
+      exposeDebug();
+      wake();
+    })
+    .catch(function () {
+      if (loadingEl) loadingEl.textContent = '三维模块加载失败，请刷新页面重试';
+    });
 })();
